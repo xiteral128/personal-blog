@@ -1,0 +1,146 @@
+# 个人博客网站前端设计报告
+
+## 1. 项目概述
+本项目旨在设计与实现一个个人博客系统，主要用于展示个人技术文章、生活随笔以及开源项目。前端将采用响应式设计，适配PC端和移动端，旨在提供优秀的阅读体验。系统前后端完全分离，本报告重点在于前端架构设计，同时预留了完善的后端RESTful API接口及MySQL数据库对接方案。
+
+- **前端技术栈**：Vue 3 / React (推荐选择其一)、Vite、TypeScript、Axios、Tailwind CSS (或 Element Plus / Ant Design)
+- **状态管理**：Pinia (Vue) / Redux Toolkit (React)
+- **路由管理**：Vue Router / React Router
+- **文章渲染**：Markdown 渲染器（如 marked.js / markdown-it），支持代码高亮（Prism.js / highlight.js）
+
+---
+
+## 2. 核心页面及路由设计
+
+### 2.1 页面规划 (客户端)
+1. **首页 (`/`)**：展示最新/最热文章列表、个人简介卡片、标签云、最新评论。
+2. **文章详情页 (`/article/:id`)**：Markdown文章正文渲染、目录树(TOC)、点赞按钮、评论区、上下篇文章导航。
+3. **归档页 (`/archives`)**：以时间轴形式展示所有文章。
+4. **分类/标签页 (`/categories`, `/tags/:name`)**：按特定分类或标签过滤文章列表。
+5. **关于我 (`/about`)**：博主个人介绍、联系方式、项目经历。
+
+### 2.2 页面规划 (后台管理端 - 选做)
+1. **登录页 (`/admin/login`)**：博主身份认证。
+2. **控制台 (`/admin/dashboard`)**：博客数据统计（访问量、文章数、评论数）。
+3. **文章管理 (`/admin/articles`)**：发布新文章（Markdown编辑器集成）、编辑、删除、草稿箱。
+4. **评论管理 (`/admin/comments`)**：审核、回复、删除评论。
+
+---
+
+## 3. 前端组件化设计 (Components)
+
+为了提高代码复用率和可维护性，将拆分以下公共组件：
+- **`Layout`**：全局布局组件，包含导航栏 `Header` 和页脚 `Footer`。
+- **`ArticleCard`**：文章列表中的单篇文章卡片（包含标题、摘要、封面图、发布时间、分类标签）。
+- **`Pagination`**：分页组件。
+- **`CommentSection`**：评论区组件，包含评论列表 `CommentList` 和评论发布框 `CommentBox`。
+- **`Toc`**：文章侧边栏目录组件，支持滚动监听高亮。
+- **`Loading` / `Skeleton`**：数据加载时的骨架屏或加载动画。
+
+---
+
+## 4. 后端 API 接口预留设计 (Axios 封装)
+
+前端通过 Axios 与后端进行数据交互，以下为预留的 RESTful API 接口约定：
+
+### 4.1 文章相关接口 (Article API)
+- **获取文章列表**
+  - `GET /api/v1/articles`
+  - 参数：`page` (页码), `limit` (每页数量), `category` (分类), `tag` (标签)
+  - 返回：`{ code: 200, data: { list: [...], total: 100 }, msg: "success" }`
+- **获取文章详情**
+  - `GET /api/v1/articles/:id`
+  - 返回：文章完整数据（包含Markdown正文）。
+- **发布/更新文章 (需Token)**
+  - `POST /api/v1/admin/articles`
+  - `PUT /api/v1/admin/articles/:id`
+- **文章点赞/阅读量增加**
+  - `POST /api/v1/articles/:id/like`
+  - `POST /api/v1/articles/:id/view`
+
+### 4.2 分类与标签接口 (Category & Tag API)
+- **获取所有分类/标签**
+  - `GET /api/v1/categories`
+  - `GET /api/v1/tags`
+
+### 4.3 评论接口 (Comment API)
+- **获取某文章下的评论**
+  - `GET /api/v1/comments?article_id=xxx`
+- **提交评论**
+  - `POST /api/v1/comments`
+  - 参数：`article_id`, `nickname`, `email`, `content`, `parent_id` (如果是回复)
+
+### 4.4 认证接口 (Auth API)
+- **管理员登录**
+  - `POST /api/v1/auth/login`
+  - 参数：`username`, `password`
+  - 返回：`{ token: "jwt_token_string", user: {...} }`
+
+---
+
+## 5. MySQL 数据库表结构预留设计
+
+前端在设计数据模型（Interface/Type）时，需与后端数据库结构保持一致。以下为预留的 MySQL 核心表结构设计：
+
+### 5.1 用户表 (`users`) - 用于博主后台登录
+| 字段名 | 类型 | 描述 |
+| --- | --- | --- |
+| `id` | INT(11) | 主键，自增 |
+| `username` | VARCHAR(50) | 用户名，唯一 |
+| `password_hash` | VARCHAR(255) | 加密后的密码 |
+| `avatar` | VARCHAR(255) | 头像URL |
+| `created_at` | TIMESTAMP | 创建时间 |
+
+### 5.2 文章表 (`articles`)
+| 字段名 | 类型 | 描述 |
+| --- | --- | --- |
+| `id` | INT(11) | 主键，自增 |
+| `title` | VARCHAR(100) | 文章标题 |
+| `summary` | VARCHAR(255) | 文章摘要 |
+| `content` | LONGTEXT | Markdown正文内容 |
+| `cover_image` | VARCHAR(255) | 封面图URL（可选） |
+| `category_id` | INT(11) | 关联的分类ID |
+| `views` | INT(11) | 阅读量，默认0 |
+| `likes` | INT(11) | 点赞数，默认0 |
+| `status` | TINYINT(1) | 状态（0:草稿, 1:已发布） |
+| `created_at` | TIMESTAMP | 发布时间 |
+| `updated_at` | TIMESTAMP | 最后更新时间 |
+
+### 5.3 分类表 (`categories`)
+| 字段名 | 类型 | 描述 |
+| --- | --- | --- |
+| `id` | INT(11) | 主键，自增 |
+| `name` | VARCHAR(50) | 分类名称，唯一 |
+| `description` | VARCHAR(255)| 分类描述 |
+
+### 5.4 标签表 (`tags`) & 文章标签关联表 (`article_tags`)
+由于一篇文章可以有多个标签，采用多对多关系。
+- `tags`: `id`, `name`
+- `article_tags`: `article_id`, `tag_id`
+
+### 5.5 评论表 (`comments`)
+| 字段名 | 类型 | 描述 |
+| --- | --- | --- |
+| `id` | INT(11) | 主键，自增 |
+| `article_id` | INT(11) | 关联的文章ID |
+| `parent_id` | INT(11) | 父评论ID（用于楼中楼回复，默认0） |
+| `nickname` | VARCHAR(50) | 评论者昵称 |
+| `email` | VARCHAR(100) | 评论者邮箱（用于展示Gravatar头像） |
+| `content` | TEXT | 评论内容 |
+| `status` | TINYINT(1) | 状态（0:待审核, 1:已通过） |
+| `created_at` | TIMESTAMP | 评论时间 |
+
+---
+
+## 6. 状态管理设计 (Store)
+
+- **`userStore`**：管理管理员登录状态、Token、用户信息。
+- **`appStore`**：管理全局UI状态，如：
+  - `theme`: 亮色/暗色模式切换 (Light / Dark mode)。
+  - `sidebarOpen`: 移动端侧边栏抽屉的展开/收起状态。
+
+## 7. 性能优化与安全预留
+1. **路由懒加载**：使用 `() => import('...')` 按需加载页面级组件。
+2. **SEO 优化**：预留 TDK (Title, Description, Keywords) 配置；若有强SEO需求，可考虑采用 SSR 框架（如 Nuxt.js / Next.js）。
+3. **防范 XSS 攻击**：在渲染 Markdown 及用户评论时，使用 `DOMPurify` 库对 HTML 进行消毒过滤。
+4. **请求拦截器**：Axios 全局配置 Token 注入（针对需要鉴权的后台接口），统一处理 401/403/500 等异常状态码。

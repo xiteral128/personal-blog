@@ -1,0 +1,114 @@
+# 个人博客网站后端设计报告
+
+## 1. 项目概述
+本项目旨在为个人博客系统提供稳定、高效、安全的后端 API 服务。后端系统将基于 RESTful 架构风格设计，负责处理前端发送的数据请求、与 MySQL 数据库进行交互、执行业务逻辑以及权限校验。本报告将详细阐述后端的技术选型、系统架构、数据库模型、API 接口规范及安全策略。
+
+- **后端技术栈**：Node.js + Express / NestJS (或 Go + Gin / Java + Spring Boot，推荐根据熟悉程度选择)
+- **数据库**：MySQL 8.0+
+- **ORM 框架**：Prisma / TypeORM / Sequelize (Node.js 环境) 或 GORM (Go 环境)
+- **身份认证**：JWT (JSON Web Token)
+- **缓存（可选）**：Redis（用于缓存热点文章、统计阅读量等）
+
+---
+
+## 2. 系统架构设计
+
+系统采用经典的分层架构设计（N-Tier Architecture），以实现高内聚、低耦合：
+
+1. **路由层 (Router / Controller)**：
+   - 负责接收客户端的 HTTP 请求，解析参数（Query, Body, Params）。
+   - 进行基本的数据格式校验。
+   - 调用对应的服务层处理业务逻辑。
+   - 将处理结果封装成统一格式返回给客户端。
+2. **服务层 (Service)**：
+   - 承载核心业务逻辑（如：文章的发布逻辑、评论的审核机制）。
+   - 编排不同的数据模型操作。
+3. **数据访问层 (Repository / DAO)**：
+   - 负责与 MySQL 数据库直接交互。
+   - 封装 CRUD（创建、读取、更新、删除）操作，对上层屏蔽底层 SQL 细节。
+4. **公共组件层 (Common / Utils)**：
+   - 包含全局中间件（如：日志记录、错误处理、跨域处理）。
+   - 工具类（如：密码加密解密、JWT 生成与验证、日期格式化）。
+
+---
+
+## 3. 数据库设计 (MySQL)
+
+数据库设计与前端需求保持严格一致，包含以下 6 张核心表。具体的 DDL 脚本请参考项目根目录下的 `database/init.sql`。
+
+1. **`users` (用户表)**：存储博主管理员信息。关键字段：`username`, `password_hash` (Bcrypt 加密)。
+2. **`categories` (分类表)**：文章分类。关键字段：`name` (唯一)。
+3. **`tags` (标签表)**：文章标签。关键字段：`name` (唯一)。
+4. **`articles` (文章表)**：存储博客正文。关键字段：`title`, `content`, `category_id`, `status` (区分草稿/发布)。
+5. **`article_tags` (文章-标签关联表)**：处理多对多关系。关键字段：`article_id`, `tag_id`。
+6. **`comments` (评论表)**：存储用户评论。关键字段：`article_id`, `parent_id` (实现楼中楼), `content`, `status` (审核状态)。
+
+---
+
+## 4. API 接口规范与详细设计
+
+所有 API 均遵循 RESTful 规范，基础路径为 `/api/v1`。
+统一响应格式如下：
+```json
+{
+  "code": 200,          // 业务状态码 (200: 成功, 400: 参数错误, 401: 未授权, 500: 服务器错误)
+  "message": "Success", // 提示信息
+  "data": { ... }       // 实际数据内容 (可以是对象或数组，失败时为 null)
+}
+```
+
+### 4.1 认证模块 (Auth)
+- **POST `/api/v1/auth/login`**
+  - **功能**：管理员登录。
+  - **Body**：`{ "username": "admin", "password": "xxx" }`
+  - **响应**：`{ "token": "jwt_string", "user": { "username": "admin" } }`
+
+### 4.2 前台公开接口 (Public API - 无需 Token)
+- **GET `/api/v1/articles`**
+  - **功能**：分页获取已发布的文章列表。
+  - **Query**：`page` (默认 1), `limit` (默认 10), `category_id` (可选), `tag_id` (可选)。
+  - **响应**：返回文章列表（不含完整 content）及总条数 `total`。
+- **GET `/api/v1/articles/:id`**
+  - **功能**：获取单篇文章详情，同时触发阅读量 `views` + 1。
+- **POST `/api/v1/articles/:id/like`**
+  - **功能**：文章点赞，`likes` + 1。
+- **GET `/api/v1/categories` & GET `/api/v1/tags`**
+  - **功能**：获取所有分类和标签。
+- **GET `/api/v1/comments`**
+  - **功能**：获取某篇文章下已通过审核的评论。
+  - **Query**：`article_id` (必填)。
+- **POST `/api/v1/comments`**
+  - **功能**：提交新评论。
+  - **Body**：`article_id`, `nickname`, `email`, `content`, `parent_id`。
+
+### 4.3 后台管理接口 (Admin API - 需 Header 携带 Authorization: Bearer <token>)
+- **POST `/api/v1/admin/articles`**
+  - **功能**：发布新文章/保存草稿。
+  - **Body**：`title`, `summary`, `content`, `category_id`, `tags` (数组), `status`。
+- **PUT `/api/v1/admin/articles/:id`**
+  - **功能**：更新文章内容。
+- **DELETE `/api/v1/admin/articles/:id`**
+  - **功能**：删除文章（软删除或硬删除）。
+- **PUT `/api/v1/admin/comments/:id/status`**
+  - **功能**：审核评论（通过/拒绝）。
+  - **Body**：`status` (0 或 1)。
+
+---
+
+## 5. 安全性设计
+
+1. **密码加密**：数据库中绝对不存储明文密码。用户注册/修改密码时，使用 **Bcrypt** 算法进行 Hash 处理。登录时使用 Bcrypt 的 `compare` 方法验证。
+2. **JWT 认证**：
+   - 登录成功后签发 JWT Token，设置合理的过期时间（如 24 小时）。
+   - 后台管理接口必须经过 **JWT Auth Middleware** 中间件校验，验证失败返回 `401 Unauthorized`。
+3. **防范 SQL 注入**：严格使用 ORM 框架或预编译（Prepared Statements）来执行 SQL，杜绝字符串拼接 SQL。
+4. **防范 XSS 攻击**：虽然前端使用了 `DOMPurify` 进行过滤，后端也应对接收到的评论 `content` 进行基础的标签转义或过滤。
+5. **CORS 跨域处理**：在后端配置全局 CORS 中间件，允许指定的前端域名（如 `http://localhost:5173`）进行跨域请求，并允许携带必要的 Headers。
+
+---
+
+## 6. 部署与运维规划
+
+1. **环境配置**：使用 `.env` 文件管理环境变量（数据库连接串、JWT 密钥、服务端口等），区分开发环境（development）和生产环境（production）。
+2. **进程管理**：在 Linux 服务器上使用 **PM2** (Node.js) 或 systemd 来管理后端进程，确保服务崩溃后自动重启。
+3. **反向代理**：使用 **Nginx** 作为反向代理服务器，处理 HTTPS 证书 (SSL/TLS) 卸载，并将 `/api` 路径的请求转发到后端服务端口。

@@ -1,0 +1,115 @@
+# 个人博客网站后端数据库设计报告
+
+## 1. 概述
+本报告基于《前端设计报告》和《后端设计报告》的需求，对个人博客系统的底层数据库进行详细设计。本系统采用关系型数据库，主要用于存储博主信息、文章数据、分类标签体系以及用户的交互评论。
+
+- **数据库类型**：MySQL 8.0+
+- **默认存储引擎**：InnoDB（支持事务、行级锁、外键）
+- **默认字符集**：`utf8mb4`（支持完整 Unicode，包含 Emoji 表情）
+- **排序规则**：`utf8mb4_unicode_ci`（提供更准确的多语言比较和排序）
+- **数据库名称**：`my_blog`
+
+---
+
+## 2. 实体关系模型 (E-R 分析)
+
+系统主要包含以下实体及其关系：
+1. **用户 (User)**：代表后台管理员（博主）。
+   - 一名用户可以发布多篇**文章 (Article)**。（1:N）
+2. **分类 (Category)**：文章的主题分类。
+   - 一个分类下可以包含多篇**文章 (Article)**，但一篇文章只能属于一个分类。（1:N）
+3. **标签 (Tag)**：文章的具体特性标签。
+   - 一篇文章可以有多个标签，一个标签也可以被多篇文章使用。（M:N，需通过 `article_tags` 关联表实现）
+4. **文章 (Article)**：博客核心内容。
+   - 一篇文章可以拥有多条**评论 (Comment)**。（1:N）
+5. **评论 (Comment)**：访客对文章的留言。
+   - 评论支持“楼中楼”模式，即一条评论可以有多个子评论（回复）。（1:N，自关联）
+
+---
+
+## 3. 数据表结构设计详述
+
+### 3.1 用户表 (`users`)
+**用途**：存储博主及管理员的登录凭证与基本信息。
+| 字段名 | 数据类型 | 约束/属性 | 默认值 | 描述说明 |
+| :--- | :--- | :--- | :--- | :--- |
+| `id` | INT(11) | PK, AUTO_INCREMENT | - | 主键，唯一标识 |
+| `username` | VARCHAR(50) | NOT NULL, UNIQUE | - | 登录用户名 |
+| `password_hash`| VARCHAR(255) | NOT NULL | - | 密码哈希值 (Bcrypt加密) |
+| `avatar` | VARCHAR(255) | NULL | NULL | 用户头像 URL |
+| `created_at` | TIMESTAMP | NOT NULL | CURRENT_TIMESTAMP| 账号创建时间 |
+
+### 3.2 分类表 (`categories`)
+**用途**：文章的主干分类管理（如“前端技术”、“生活随笔”）。
+| 字段名 | 数据类型 | 约束/属性 | 默认值 | 描述说明 |
+| :--- | :--- | :--- | :--- | :--- |
+| `id` | INT(11) | PK, AUTO_INCREMENT | - | 分类 ID |
+| `name` | VARCHAR(50) | NOT NULL, UNIQUE | - | 分类名称 |
+| `description` | VARCHAR(255) | NULL | NULL | 分类的简短描述 |
+
+### 3.3 标签表 (`tags`)
+**用途**：文章的细粒度标签体系（如“Vue3”、“数据库设计”）。
+| 字段名 | 数据类型 | 约束/属性 | 默认值 | 描述说明 |
+| :--- | :--- | :--- | :--- | :--- |
+| `id` | INT(11) | PK, AUTO_INCREMENT | - | 标签 ID |
+| `name` | VARCHAR(50) | NOT NULL, UNIQUE | - | 标签名称 |
+
+### 3.4 文章表 (`articles`)
+**用途**：存储博客正文及元数据。
+| 字段名 | 数据类型 | 约束/属性 | 默认值 | 描述说明 |
+| :--- | :--- | :--- | :--- | :--- |
+| `id` | INT(11) | PK, AUTO_INCREMENT | - | 文章 ID |
+| `title` | VARCHAR(100) | NOT NULL | - | 文章标题 |
+| `summary` | VARCHAR(255) | NOT NULL | - | 列表展示用的摘要 |
+| `content` | LONGTEXT | NOT NULL | - | Markdown 格式正文 |
+| `cover_image` | VARCHAR(255) | NULL | NULL | 封面图 URL |
+| `category_id` | INT(11) | FK | NULL | 关联的分类 ID |
+| `views` | INT(11) | NOT NULL | 0 | 累计阅读量 |
+| `likes` | INT(11) | NOT NULL | 0 | 累计点赞数 |
+| `status` | TINYINT(1) | NOT NULL | 1 | 状态(0:草稿, 1:已发布) |
+| `created_at` | TIMESTAMP | NOT NULL | CURRENT_TIMESTAMP| 首次发布时间 |
+| `updated_at` | TIMESTAMP | NOT NULL | ON UPDATE... | 最后一次修改时间 |
+
+*注：`category_id` 建立外键关联 `categories(id)`，`ON DELETE SET NULL`，即分类被删时，文章归为“未分类”。*
+
+### 3.5 文章-标签关联表 (`article_tags`)
+**用途**：解析文章和标签的 M:N 多对多映射关系。
+| 字段名 | 数据类型 | 约束/属性 | 默认值 | 描述说明 |
+| :--- | :--- | :--- | :--- | :--- |
+| `article_id` | INT(11) | PK, FK | - | 联合主键，关联文章 ID |
+| `tag_id` | INT(11) | PK, FK | - | 联合主键，关联标签 ID |
+
+*注：外键均设置为 `ON DELETE CASCADE`，当文章或标签被删除时，关联记录自动清除。*
+
+### 3.6 评论表 (`comments`)
+**用途**：记录读者的互动评论信息。
+| 字段名 | 数据类型 | 约束/属性 | 默认值 | 描述说明 |
+| :--- | :--- | :--- | :--- | :--- |
+| `id` | INT(11) | PK, AUTO_INCREMENT | - | 评论 ID |
+| `article_id` | INT(11) | FK, NOT NULL | - | 评论所属的文章 ID |
+| `parent_id` | INT(11) | NOT NULL | 0 | 父评论 ID(0为顶层评论)|
+| `nickname` | VARCHAR(50) | NOT NULL | - | 留言者昵称 |
+| `email` | VARCHAR(100) | NOT NULL | - | 留言者邮箱(用于Gravatar)|
+| `content` | TEXT | NOT NULL | - | 留言具体内容 |
+| `status` | TINYINT(1) | NOT NULL | 1 | 状态(0:待审核, 1:通过)|
+| `created_at` | TIMESTAMP | NOT NULL | CURRENT_TIMESTAMP| 留言时间 |
+
+*注：`article_id` 建立外键关联 `articles(id)`，`ON DELETE CASCADE`，文章删除时评论一同删除。*
+
+---
+
+## 4. 索引与性能优化策略
+
+为了保证博客在内容增多时的查询性能，设计了以下索引方案：
+
+1. **唯一索引 (Unique Index)**：
+   - `users(username)`: 防止注册相同管理员账号。
+   - `categories(name)`, `tags(name)`: 确保分类和标签的唯一性，同时加速精确匹配查询。
+2. **普通索引 (B-Tree Index)**：
+   - `articles(category_id)`: 优化按分类筛选文章列表的查询速度。
+   - `comments(article_id)`: 加速获取单篇文章下的所有评论。
+   - `comments(parent_id)`: 加速加载特定评论下的子回复（楼中楼渲染）。
+3. **全文检索 (备选)**：
+   - `articles(title, content)`: 若博客内置搜索功能使用 MySQL 原生支持，可对标题和内容建立 `FULLTEXT` 索引（MySQL 5.7+ 兼容中文需配合 `ngram` 分词器）；若使用外部引擎（如 Elasticsearch 或 MeiliSearch），则由外部处理。
+4. **反范式化冗余 (已采用)**：
+   - `articles` 表中直接冗余了 `views` 和 `likes` 字段，避免了每次查询都要去关联“访问日志表”或“点赞日志表”进行 COUNT 操作，极大地提高了列表接口的响应速度。
