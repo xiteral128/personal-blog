@@ -217,6 +217,21 @@ npm run build
 - 服务器 SSH 私钥或登录密码
 - 任何完整 AI API Key 明文
 
+## 公网部署记录
+
+部署日期：2026-04-25
+
+已执行：
+
+- 将代码提交并推送到 GitHub `main` 分支。
+- 在服务器仓库目录执行 `git pull --ff-only origin main`。
+- 使用生产环境 `.env.production` 执行 Docker Compose 重建和滚动启动。
+- 迁移服务已执行 `004_ai_writing_module.sql`。
+- 服务状态检查通过：backend、nginx、mysql、redis、qdrant 均处于运行状态。
+- 公网首页访问验证通过：`https://blog.cnmnimasile.asia/` 返回 200。
+- 后台 AI 写作页面访问验证通过：`https://blog.cnmnimasile.asia/admin/ai-writing` 返回 200。
+- AI API 未携带 Key 访问验证通过：`/api/v1/ai/meta` 返回 401，说明 AI API 已上线且默认受鉴权保护。
+
 ## 后续版本建议
 
 V2 可以继续增强：
