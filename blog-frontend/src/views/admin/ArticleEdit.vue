@@ -23,6 +23,18 @@
           </select>
         </div>
       </div>
+
+      <div class="grid grid-cols-1 md:grid-cols-3 gap-6">
+        <div>
+          <label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">文章状态</label>
+          <select v-model.number="form.status" class="w-full rounded-md border-gray-300 shadow-sm focus:border-indigo-500 focus:ring-indigo-500 dark:bg-gray-700 dark:border-gray-600 dark:text-white p-3 border text-base bg-transparent">
+            <option :value="1" class="dark:bg-gray-800">已发布</option>
+            <option :value="0" class="dark:bg-gray-800">普通草稿</option>
+            <option :value="2" class="dark:bg-gray-800">AI 待审核</option>
+            <option :value="3" class="dark:bg-gray-800">AI 已驳回</option>
+          </select>
+        </div>
+      </div>
       
       <div>
         <label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">文章摘要</label>
@@ -57,8 +69,8 @@
 <script setup lang="ts">
 import { ref, reactive, onMounted } from 'vue'
 import { useRouter, useRoute } from 'vue-router'
-import { saveArticle, uploadImage } from '../../api/admin'
-import { getArticleDetail, getCategories } from '../../api/article'
+import { getAdminArticleDetail, saveArticle, uploadImage } from '../../api/admin'
+import { getCategories } from '../../api/article'
 import { useAppStore } from '../../store'
 
 // 引入 md-editor-v3 组件和样式
@@ -78,7 +90,8 @@ const form = reactive({
   title: '',
   summary: '',
   content: '',
-  category_id: 1
+  category_id: 1,
+  status: 1
 })
 
 onMounted(async () => {
@@ -94,12 +107,13 @@ onMounted(async () => {
   if (id) {
     isEdit.value = true
     try {
-      const article = await getArticleDetail(id)
+      const article = await getAdminArticleDetail(id)
       form.id = article.id
       form.title = article.title
       form.summary = article.summary
       form.content = article.content
       form.category_id = article.category_id || 1
+      form.status = article.status ?? 1
     } catch (error) {
       alert('获取文章详情失败，无法编辑')
       router.back()

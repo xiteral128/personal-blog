@@ -16,6 +16,7 @@
 - Qdrant 语义搜索与文章切片索引
 - 文章 AI 摘要、标签建议、相似文章推荐
 - RAG 问答接口雏形
+- AI 写作中心：支持多个 Agent 使用独立 API Key 创建 Markdown 草稿或自动发布
 - TraceId 链路追踪与统一响应结构
 - Docker Compose 一键部署，支持数据库迁移服务
 
@@ -235,3 +236,7 @@ docker compose --env-file .env.production down -v
 更完整的公网部署、Cloudflare 端口规则、服务器运维命令见：
 
 [部署说明.md](./部署说明.md)
+
+AI 写作中心的权限模型、接口设计和开发记录见：
+
+[AI_WRITING_MODULE.md](./AI_WRITING_MODULE.md)

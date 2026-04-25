@@ -1,9 +1,10 @@
 import { Router } from 'express';
-import { saveArticle, deleteArticle } from '../controllers/adminController';
+import { saveArticle, deleteArticle, getArticleDetail } from '../controllers/adminController';
 import { getDashboardStats } from '../controllers/statsController';
 import { getAllComments, updateCommentStatus, deleteCommentHandler } from '../controllers/commentController';
 import { uploadImage } from '../controllers/uploadController';
 import { rebuildIndex } from '../controllers/searchController';
+import { approveAdminAiDraft, createAiKey, listAdminAiDrafts, listAiKeys, rejectAdminAiDraft, revokeAiKey } from '../controllers/aiWritingController';
 import { authMiddleware } from '../shared/middleware/auth';
 import { AppError } from '../shared/errors/appError';
 import multer from 'multer';
@@ -38,6 +39,7 @@ const upload = multer({
 
 router.post('/upload', authMiddleware, upload.single('image'), uploadImage);
 router.use(authMiddleware);
+router.get('/articles/:id', getArticleDetail);
 router.post('/articles', saveArticle);
 router.delete('/articles/:id', deleteArticle);
 router.post('/search/reindex', rebuildIndex);
@@ -45,5 +47,11 @@ router.get('/dashboard', getDashboardStats);
 router.get('/comments', getAllComments);
 router.put('/comments/:id/status', updateCommentStatus);
 router.delete('/comments/:id', deleteCommentHandler);
+router.get('/ai/keys', listAiKeys);
+router.post('/ai/keys', createAiKey);
+router.patch('/ai/keys/:id/revoke', revokeAiKey);
+router.get('/ai/drafts', listAdminAiDrafts);
+router.post('/ai/drafts/:id/approve', approveAdminAiDraft);
+router.post('/ai/drafts/:id/reject', rejectAdminAiDraft);
 
 export default router;

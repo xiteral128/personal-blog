@@ -18,6 +18,10 @@
           <svg class="w-5 h-5 mr-3 opacity-70 group-hover:opacity-100" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 20H5a2 2 0 01-2-2V6a2 2 0 012-2h10a2 2 0 012 2v1m2 13a2 2 0 01-2-2V7m2 13a2 2 0 002-2V9a2 2 0 00-2-2h-2m-4-3H9M7 16h6M7 8h6v4H7V8z"></path></svg>
           文章管理
         </router-link>
+        <router-link to="/admin/ai-writing" class="flex items-center px-4 py-3 rounded-lg text-gray-400 hover:text-cyan-300 hover:bg-cyan-500/10 hover:shadow-[inset_3px_0_0_#22d3ee] transition-all group">
+          <svg class="w-5 h-5 mr-3 opacity-70 group-hover:opacity-100" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9.75 3.75h4.5M12 3.75v3m-5.25 4.5h10.5m-9 6h7.5M7.5 21h9a3 3 0 003-3v-6.75a6.75 6.75 0 00-13.5 0V18a3 3 0 003 3z"></path></svg>
+          AI 写作
+        </router-link>
         <router-link to="/admin/comments" class="flex items-center px-4 py-3 rounded-lg text-gray-400 hover:text-indigo-300 hover:bg-indigo-500/10 hover:shadow-[inset_3px_0_0_#6366f1] transition-all group">
           <svg class="w-5 h-5 mr-3 opacity-70 group-hover:opacity-100" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 12h.01M12 12h.01M16 12h.01M21 12c0 4.418-4.03 8-9 8a9.863 9.863 0 01-4.255-.949L3 20l1.395-3.72C3.512 15.042 3 13.574 3 12c0-4.418 4.03-8 9-8s9 3.582 9 8z"></path></svg>
           评论管理

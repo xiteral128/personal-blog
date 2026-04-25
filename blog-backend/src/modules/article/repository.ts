@@ -24,6 +24,10 @@ export interface ArticleDetailRow extends RowDataPacket {
   views: number;
   likes: number;
   status: number;
+  source: string;
+  ai_key_id: number | null;
+  review_status: string | null;
+  review_note: string | null;
   created_at: string;
   updated_at: string;
 }
@@ -66,10 +70,23 @@ export const flushArticleViewAggregates = async (articleId: number) => {
 export const findPublishedArticleById = async (id: number) => {
   const [rows] = await db.query<ArticleDetailRow[]>(
     `SELECT a.id, a.title, a.summary, a.content, a.cover_image, a.category_id, c.name as category_name,
-            a.views, a.likes, a.status, a.created_at, a.updated_at
+            a.views, a.likes, a.status, a.source, a.ai_key_id, a.review_status, a.review_note, a.created_at, a.updated_at
      FROM articles a
      LEFT JOIN categories c ON a.category_id = c.id
      WHERE a.id = ? AND a.status = 1`,
+    [id]
+  );
+
+  return rows[0] || null;
+};
+
+export const findArticleByIdForAdmin = async (id: number) => {
+  const [rows] = await db.query<ArticleDetailRow[]>(
+    `SELECT a.id, a.title, a.summary, a.content, a.cover_image, a.category_id, c.name as category_name,
+            a.views, a.likes, a.status, a.source, a.ai_key_id, a.review_status, a.review_note, a.created_at, a.updated_at
+     FROM articles a
+     LEFT JOIN categories c ON a.category_id = c.id
+     WHERE a.id = ?`,
     [id]
   );
 
@@ -88,19 +105,51 @@ export const saveArticleRecord = async (input: {
   content: string;
   categoryId: number;
   status: number;
+  source?: string;
+  aiKeyId?: number | null;
+  reviewStatus?: string | null;
+  reviewNote?: string | null;
 }) => {
   if (input.id) {
     await db.query(
-      'UPDATE articles SET title = ?, summary = ?, content = ?, category_id = ?, status = ? WHERE id = ?',
-      [input.title, input.summary, input.content, input.categoryId, input.status, input.id]
+      `UPDATE articles
+       SET title = ?, summary = ?, content = ?, category_id = ?, status = ?,
+           source = COALESCE(?, source),
+           ai_key_id = COALESCE(?, ai_key_id),
+           review_status = COALESCE(?, review_status),
+           review_note = COALESCE(?, review_note)
+       WHERE id = ?`,
+      [
+        input.title,
+        input.summary,
+        input.content,
+        input.categoryId,
+        input.status,
+        input.source ?? null,
+        input.aiKeyId ?? null,
+        input.reviewStatus ?? null,
+        input.reviewNote ?? null,
+        input.id,
+      ]
     );
 
     return { id: input.id, created: false };
   }
 
   const [result] = await db.query<ResultSetHeader>(
-    'INSERT INTO articles (title, summary, content, category_id, status) VALUES (?, ?, ?, ?, ?)',
-    [input.title, input.summary, input.content, input.categoryId, input.status]
+    `INSERT INTO articles (title, summary, content, category_id, status, source, ai_key_id, review_status, review_note)
+     VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+    [
+      input.title,
+      input.summary,
+      input.content,
+      input.categoryId,
+      input.status,
+      input.source || 'manual',
+      input.aiKeyId || null,
+      input.reviewStatus || null,
+      input.reviewNote || null,
+    ]
   );
 
   return { id: result.insertId, created: true };

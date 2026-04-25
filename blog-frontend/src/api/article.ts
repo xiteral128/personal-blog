@@ -12,6 +12,10 @@ export interface Article {
   views: number
   likes: number
   status: number
+  source?: string
+  ai_key_id?: number | null
+  review_status?: string | null
+  review_note?: string | null
   created_at: string
   updated_at: string
 }

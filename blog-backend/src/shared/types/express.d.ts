@@ -4,6 +4,12 @@ declare namespace Express {
       id: number;
       username: string;
     };
+    aiKey?: {
+      id: number;
+      name: string;
+      mode: 'autonomous' | 'review';
+      dailyLimit: number;
+    };
     traceId?: string;
   }
 }

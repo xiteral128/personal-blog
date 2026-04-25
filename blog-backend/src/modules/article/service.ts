@@ -3,6 +3,7 @@ import { getCache, setCache, delCache } from '../../shared/cache/cache';
 import { buildCacheKey } from '../../shared/cache/redis';
 import { parsePagination } from '../../shared/utils/validators';
 import {
+  findArticleByIdForAdmin,
   findPublishedArticleById,
   findPublishedArticles,
   flushArticleViewAggregates,
@@ -79,12 +80,17 @@ export const saveArticle = async (input: {
   content: string;
   categoryId?: number;
   status?: number;
+  source?: string;
+  aiKeyId?: number | null;
+  reviewStatus?: string | null;
+  reviewNote?: string | null;
 }) => {
   const title = input.title.trim();
   const content = input.content.trim();
   const summary = input.summary?.trim() || title.slice(0, 50);
   const categoryId = input.categoryId ?? 1;
-  const status = input.status ?? 1;
+  const existing = input.id ? await findArticleByIdForAdmin(input.id) : null;
+  const status = input.status ?? existing?.status ?? 1;
 
   const result = await saveArticleRecord({
     id: input.id,
@@ -93,6 +99,10 @@ export const saveArticle = async (input: {
     content,
     categoryId,
     status,
+    source: input.source,
+    aiKeyId: input.aiKeyId,
+    reviewStatus: input.reviewStatus,
+    reviewNote: input.reviewNote,
   });
 
   await delCache(
@@ -113,4 +123,16 @@ export const deleteArticle = async (id: number) => {
     buildCacheKey('articles', 'list', 1, 10),
     buildCacheKey('stats', 'dashboard')
   );
+};
+
+export const getArticleForAdmin = async (id: number) => {
+  const article = await findArticleByIdForAdmin(id);
+  if (!article) {
+    throw new AppError(404, 'Article Not Found');
+  }
+  return {
+    ...article,
+    contentPreview: String(article.content || '').slice(0, 240),
+    contentLength: String(article.content || '').length,
+  };
 };

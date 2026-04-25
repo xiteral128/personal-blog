@@ -62,6 +62,12 @@ const routes: Array<RouteRecordRaw> = [
         meta: { title: '编辑文章' }
       },
       {
+        path: 'ai-writing',
+        name: 'AdminAiWriting',
+        component: () => import('../views/admin/AiWriting.vue'),
+        meta: { title: 'AI 写作中心' }
+      },
+      {
         path: 'comments',
         name: 'AdminComments',
         component: () => import('../views/admin/AdminComments.vue'),

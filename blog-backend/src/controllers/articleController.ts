@@ -1,5 +1,5 @@
 import { Request, Response } from 'express';
-import { deleteArticle, getPublishedArticleDetail, likePublishedArticle, listPublishedArticles, saveArticle } from '../modules/article/service';
+import { deleteArticle, getArticleForAdmin, getPublishedArticleDetail, likePublishedArticle, listPublishedArticles, saveArticle } from '../modules/article/service';
 import { createArticleComment, listArticleComments } from '../modules/comment/service';
 import { asyncHandler } from '../shared/utils/asyncHandler';
 import { sendNoContent, sendSuccess } from '../shared/utils/response';
@@ -71,6 +71,12 @@ export const saveArticleHandler = asyncHandler(async (req: Request, res: Respons
   });
 
   return sendSuccess(res, { id: result.id }, result.created ? '发布成功' : '更新成功');
+});
+
+export const getAdminArticleDetail = asyncHandler(async (req: Request, res: Response) => {
+  const id = requireNumber(req.params.id, '文章ID');
+  const article = await getArticleForAdmin(id);
+  return sendSuccess(res, article);
 });
 
 export const deleteArticleHandler = asyncHandler(async (req: Request, res: Response) => {
