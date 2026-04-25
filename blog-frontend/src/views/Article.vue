@@ -52,7 +52,7 @@
         </div>
       </div>
 
-      <div class="prose prose-lg prose-indigo dark:prose-invert max-w-none prose-headings:font-bold prose-a:text-indigo-600 hover:prose-a:text-indigo-500" v-html="compiledMarkdown"></div>
+      <div class="article-markdown prose prose-lg prose-indigo dark:prose-invert max-w-none prose-headings:font-bold prose-a:text-indigo-600 hover:prose-a:text-indigo-500" v-html="compiledMarkdown"></div>
 
       <div class="mt-12 grid grid-cols-1 lg:grid-cols-2 gap-6">
         <div class="rounded-2xl border border-indigo-500/20 bg-gray-900/30 p-6">
