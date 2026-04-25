@@ -7,10 +7,14 @@
 Set-Location $PSScriptRoot
 
 # 服务器配置
-$SERVER = "172.245.114.162"
+$SERVER = Read-Host "请输入服务器 IP"
+$DOMAIN = Read-Host "请输入域名（例如 blog.example.com）"
+$PUBLIC_HTTP_PORT = Read-Host "请输入公网 HTTP 端口（默认 28080）"
+if ([string]::IsNullOrWhiteSpace($PUBLIC_HTTP_PORT)) {
+    $PUBLIC_HTTP_PORT = "28080"
+}
 $USER = "root"
 $REMOTE_DIR = "/opt/blog"
-$DOMAIN = "cli.cnmnimasile.asia"
 $TAR_FILE = "blog-deploy.tar.gz"
 
 # 提示输入 SSH 密码
@@ -103,10 +107,11 @@ Write-Host "========================================" -ForegroundColor Green
 Write-Host ""
 Write-Host "访问地址:" -ForegroundColor Cyan
 Write-Host "  公网: https://${DOMAIN}" -ForegroundColor White
-Write-Host "  直连: http://${SERVER}:8080" -ForegroundColor White
+Write-Host "  直连: http://${SERVER}:${PUBLIC_HTTP_PORT}" -ForegroundColor White
 Write-Host ""
 Write-Host "提示:" -ForegroundColor Yellow
 Write-Host "  - 请确保 Cloudflare DNS A 记录指向 ${SERVER}" -ForegroundColor Gray
 Write-Host "  - Cloudflare SSL 模式建议设为 Flexible" -ForegroundColor Gray
+Write-Host "  - Cloudflare Origin Rules 的目标端口请设为 ${PUBLIC_HTTP_PORT}" -ForegroundColor Gray
 Write-Host "  - 首次部署后数据库密码会自动生成，请在服务器 ${REMOTE_DIR}/.env.production 中查看" -ForegroundColor Gray
 Write-Host ""

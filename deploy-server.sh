@@ -35,6 +35,11 @@ else
     echo "[3/4] 生产密钥已配置，跳过"
 fi
 
+public_http_port=$(grep -E '^PUBLIC_HTTP_PORT=' .env.production | tail -n 1 | cut -d= -f2 || true)
+public_http_port=${public_http_port:-28080}
+cors_origin=$(grep -E '^CORS_ORIGIN=' .env.production | tail -n 1 | cut -d= -f2- || true)
+cors_origin=${cors_origin:-https://your-domain.example}
+
 echo "[4/4] 构建并启动 Docker 容器..."
 docker compose --env-file .env.production down 2>/dev/null || true
 docker compose --env-file .env.production up -d --build
@@ -47,15 +52,15 @@ echo "=== 服务状态 ==="
 docker compose --env-file .env.production ps
 
 if command -v ufw >/dev/null 2>&1; then
-    ufw allow 8080/tcp 2>/dev/null || true
+    ufw allow "${public_http_port}/tcp" 2>/dev/null || true
     ufw allow 22/tcp 2>/dev/null || true
-    echo "防火墙已放行 8080 和 22 端口"
+    echo "防火墙已放行 ${public_http_port} 和 22 端口"
 fi
 
 echo
 echo "=== 部署完成 ==="
-echo "本地访问: http://localhost:8080"
-echo "公网访问: https://cli.cnmnimasile.asia (需正确配置 Cloudflare)"
+echo "本地访问: http://localhost:${public_http_port}"
+echo "公网访问: ${cors_origin} (需正确配置 Cloudflare)"
 echo
 echo "提示: 请确认 Cloudflare DNS 指向当前服务器 IP"
-echo "提示: Cloudflare Origin Rules 需要把目标端口改为 8080"
+echo "提示: Cloudflare Origin Rules 需要把目标端口改为 ${public_http_port}"

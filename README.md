@@ -61,7 +61,7 @@
 
 ```mermaid
 flowchart LR
-  Browser["Browser"] --> Nginx["Nginx :8080"]
+  Browser["Browser"] --> Nginx["Nginx :28080"]
   Nginx --> Frontend["Vue SPA"]
   Nginx -- /api/v1 --> Backend["Express API"]
   Backend --> MySQL[("MySQL")]
@@ -140,10 +140,10 @@ docker compose --env-file .env.production logs -f nginx
 docker compose --env-file .env.production logs -f migrate
 ```
 
-服务默认通过宿主机 `8080` 端口访问：
+服务默认通过宿主机 `28080` 端口访问。这个端口可通过 `.env.production` 中的 `PUBLIC_HTTP_PORT` 修改：
 
 ```text
-http://localhost:8080
+http://localhost:28080
 ```
 
 MySQL、Redis、Qdrant 不映射到宿主机端口，只在 Docker 内部网络中访问，适合公网部署。
