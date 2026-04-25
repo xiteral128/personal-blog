@@ -1,14 +1,9 @@
 <template>
   <div class="max-w-4xl mx-auto bg-white dark:bg-gray-800 rounded-lg shadow-lg overflow-hidden relative cyber-card">
-    
-    <!-- 极客风边框动画 -->
     <div class="cyber-line-top"></div>
     <div class="cyber-line-bottom"></div>
-
-    <!-- 顶部阅读进度条 -->
     <div class="fixed top-0 left-0 h-1 bg-gradient-to-r from-indigo-500 via-purple-500 to-pink-500 z-50 transition-all duration-150 ease-out" :style="{ width: readingProgress + '%' }"></div>
 
-    <!-- 悬浮返回按钮 -->
     <button @click="router.back()" class="fixed left-4 bottom-8 xl:left-8 z-40 group flex items-center justify-center w-12 h-12 rounded-full bg-white/80 dark:bg-gray-800/80 backdrop-blur-md border border-indigo-500/30 text-gray-500 dark:text-gray-400 hover:text-indigo-500 dark:hover:text-indigo-400 shadow-[0_0_15px_rgba(99,102,241,0.15)] hover:shadow-[0_0_20px_rgba(99,102,241,0.4)] transition-all duration-300 hover:-translate-x-1 hidden sm:flex">
       <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10 19l-7-7m0 0l7-7m-7 7h18"></path></svg>
       <span class="absolute left-14 bg-gray-900 text-indigo-400 text-xs font-mono px-2 py-1 rounded opacity-0 group-hover:opacity-100 transition-opacity border border-indigo-500/30 pointer-events-none whitespace-nowrap">cd ..</span>
@@ -25,8 +20,7 @@
     </div>
     <div v-else-if="article" class="p-8">
       <h1 class="text-4xl font-bold text-gray-900 dark:text-white mb-4 leading-tight">{{ article.title }}</h1>
-      
-      <!-- 增强版元信息栏 -->
+
       <div class="flex flex-wrap items-center gap-y-2 text-sm text-gray-500 dark:text-gray-400 border-b border-gray-100 dark:border-gray-700 pb-6 mb-8">
         <span class="flex items-center">
           <svg class="w-4 h-4 mr-1" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z"></path></svg>
@@ -47,22 +41,57 @@
           共 {{ wordCount }} 字，预计阅读 {{ readingTime }} 分钟
         </span>
       </div>
-      
-      <!-- Markdown Content -->
+
+      <div v-if="articleAssist.summary" class="mb-8 rounded-2xl border border-indigo-500/20 bg-indigo-950/20 p-6">
+        <h3 class="text-lg font-bold text-indigo-300 mb-3">AI 摘要</h3>
+        <p class="text-sm text-indigo-100/90 leading-7">{{ articleAssist.summary }}</p>
+        <div v-if="articleAssist.suggestedTags.length" class="mt-4 flex flex-wrap gap-2">
+          <span v-for="tag in articleAssist.suggestedTags" :key="tag" class="px-3 py-1 rounded-full text-xs font-mono bg-indigo-500/10 text-indigo-300 border border-indigo-400/20">
+            {{ tag }}
+          </span>
+        </div>
+      </div>
+
       <div class="prose prose-lg prose-indigo dark:prose-invert max-w-none prose-headings:font-bold prose-a:text-indigo-600 hover:prose-a:text-indigo-500" v-html="compiledMarkdown"></div>
 
-      <!-- 点赞按钮区 -->
+      <div class="mt-12 grid grid-cols-1 lg:grid-cols-2 gap-6">
+        <div class="rounded-2xl border border-indigo-500/20 bg-gray-900/30 p-6">
+          <h3 class="text-lg font-bold text-white mb-4">RAG 问答</h3>
+          <div class="flex gap-2 mb-4">
+            <input v-model="ragQuestion" type="text" placeholder="基于这篇文章问个问题..." class="flex-1 px-4 py-3 rounded-xl bg-gray-900/80 border border-indigo-500/30 text-indigo-100 placeholder-indigo-300/40 focus:outline-none focus:ring-2 focus:ring-indigo-500" />
+            <button @click="handleAsk" :disabled="ragLoading" class="px-4 py-3 rounded-xl bg-indigo-600 hover:bg-indigo-500 disabled:opacity-50 text-white font-mono">提问</button>
+          </div>
+          <div v-if="ragAnswer" class="space-y-4">
+            <p class="text-sm text-gray-200 leading-7 whitespace-pre-wrap">{{ ragAnswer.answer }}</p>
+            <div v-if="ragAnswer.citations.length" class="space-y-2">
+              <h4 class="text-sm font-semibold text-indigo-300">引用来源</h4>
+              <div v-for="citation in ragAnswer.citations" :key="`${citation.articleId}-${citation.score}`" class="rounded-lg border border-indigo-500/20 bg-indigo-950/10 p-3">
+                <router-link :to="`/article/${citation.articleId}`" class="text-sm font-semibold text-white hover:text-indigo-300">{{ citation.title }}</router-link>
+                <p class="text-xs text-indigo-100/70 mt-1">{{ citation.snippet }}</p>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <div class="rounded-2xl border border-emerald-500/20 bg-gray-900/30 p-6">
+          <h3 class="text-lg font-bold text-white mb-4">相似文章推荐</h3>
+          <div class="space-y-3">
+            <div v-if="articleAssist.similarArticles.length === 0" class="text-sm text-gray-500">暂无推荐</div>
+            <div v-for="item in articleAssist.similarArticles" :key="item.id" class="rounded-xl border border-emerald-500/10 p-4 bg-emerald-950/10">
+              <router-link :to="`/article/${item.id}`" class="text-sm font-semibold text-white hover:text-emerald-300">{{ item.title }}</router-link>
+              <p class="text-xs text-gray-400 mt-2 line-clamp-2">{{ item.summary }}</p>
+            </div>
+          </div>
+        </div>
+      </div>
+
       <div class="mt-16 pt-8 border-t border-gray-100 dark:border-gray-700 flex justify-center relative">
-        <button 
-          id="like-button"
-          @click="handleLike"
-          :class="[
-            'flex items-center justify-center space-x-2 px-8 py-4 rounded-full transition-all duration-300 transform hover:-translate-y-1 shadow-lg',
-            hasLiked 
-              ? 'bg-gradient-to-r from-pink-500 to-rose-500 text-white hover:from-pink-600 hover:to-rose-600 shadow-pink-500/30' 
-              : 'bg-white dark:bg-gray-800 text-gray-700 dark:text-gray-200 border border-gray-200 dark:border-gray-600 hover:border-pink-500 dark:hover:border-pink-500 hover:text-pink-500 dark:hover:text-pink-400'
-          ]"
-        >
+        <button id="like-button" @click="handleLike" :class="[
+          'flex items-center justify-center space-x-2 px-8 py-4 rounded-full transition-all duration-300 transform hover:-translate-y-1 shadow-lg',
+          hasLiked
+            ? 'bg-gradient-to-r from-pink-500 to-rose-500 text-white hover:from-pink-600 hover:to-rose-600 shadow-pink-500/30'
+            : 'bg-white dark:bg-gray-800 text-gray-700 dark:text-gray-200 border border-gray-200 dark:border-gray-600 hover:border-pink-500 dark:hover:border-pink-500 hover:text-pink-500 dark:hover:text-pink-400'
+        ]">
           <svg class="w-6 h-6 transition-transform duration-300" :class="{ 'fill-current scale-110': hasLiked }" fill="none" stroke="currentColor" viewBox="0 0 24 24">
             <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4.318 6.318a4.5 4.5 0 000 6.364L12 20.364l7.682-7.682a4.5 4.5 0 00-6.364-6.364L12 7.636l-1.318-1.318a4.5 4.5 0 00-6.364 0z"></path>
           </svg>
@@ -70,11 +99,8 @@
         </button>
       </div>
 
-      <!-- Comment Section -->
       <div class="mt-16 relative z-10">
         <h3 class="text-2xl font-bold text-gray-900 dark:text-white mb-6">评论区 ({{ comments?.length || 0 }})</h3>
-        
-        <!-- Comment Form -->
         <form @submit.prevent="submitComment" class="bg-gray-50 dark:bg-gray-900/50 rounded-lg p-6 mb-8 border border-gray-100 dark:border-gray-700 shadow-inner">
           <div class="grid grid-cols-1 md:grid-cols-2 gap-6 mb-4">
             <div>
@@ -97,7 +123,6 @@
           </div>
         </form>
 
-        <!-- Comment List (带有自定义滚动条的定高区域) -->
         <div class="space-y-6 max-h-[600px] overflow-y-auto pr-2 pb-4">
           <div v-for="comment in comments" :key="comment.id" class="flex space-x-4">
             <div class="flex-shrink-0">
@@ -113,10 +138,7 @@
               </div>
             </div>
           </div>
-          
-          <div v-if="!comments || comments.length === 0" class="text-center py-8 text-gray-500 dark:text-gray-400 border border-dashed border-gray-300 dark:border-gray-700 rounded-lg">
-            还没有人评论，快来抢沙发吧！
-          </div>
+          <div v-if="!comments || comments.length === 0" class="text-center py-8 text-gray-500 dark:text-gray-400 border border-dashed border-gray-300 dark:border-gray-700 rounded-lg">还没有人评论，快来抢沙发吧！</div>
         </div>
       </div>
     </div>
@@ -134,6 +156,7 @@ import { useRoute, useRouter } from 'vue-router'
 import { marked } from 'marked'
 import DOMPurify from 'dompurify'
 import { getArticleDetail, likeArticle, getComments, createComment } from '../api/article'
+import { askRagQuestion, getArticleAssist, type ArticleAssistResult, type RagAnswerResult } from '../api/search'
 import confetti from 'canvas-confetti'
 
 const route = useRoute()
@@ -143,24 +166,20 @@ const article = ref<any>(null)
 const hasLiked = ref(false)
 const isSubmitting = ref(false)
 const readingProgress = ref(0)
+const ragQuestion = ref('')
+const ragLoading = ref(false)
+const ragAnswer = ref<RagAnswerResult | null>(null)
+const articleAssist = ref<ArticleAssistResult>({ summary: '', suggestedTags: [], similarArticles: [] })
 
 const comments = ref<any[]>([])
-const commentForm = reactive({
-  nickname: '',
-  email: '',
-  content: ''
-})
+const commentForm = reactive({ nickname: '', email: '', content: '' })
 
 const wordCount = computed(() => {
   if (!article.value || !article.value.content) return 0
-  // 简单的中英文字数统计
   return article.value.content.replace(/[\s\n]/g, '').length
 })
 
-const readingTime = computed(() => {
-  // 假设平均阅读速度 300字/分钟
-  return Math.ceil(wordCount.value / 300) || 1
-})
+const readingTime = computed(() => Math.ceil(wordCount.value / 300) || 1)
 
 const handleScroll = () => {
   const winScroll = document.body.scrollTop || document.documentElement.scrollTop
@@ -168,16 +187,10 @@ const handleScroll = () => {
   readingProgress.value = (winScroll / height) * 100
 }
 
-onMounted(() => {
-  window.addEventListener('scroll', handleScroll)
-})
-
-onUnmounted(() => {
-  window.removeEventListener('scroll', handleScroll)
-})
+onMounted(() => window.addEventListener('scroll', handleScroll))
+onUnmounted(() => window.removeEventListener('scroll', handleScroll))
 
 const handleLike = async () => {
-  // 从 localStorage 检查是否已经点赞过该文章
   const likedArticles = JSON.parse(localStorage.getItem('liked_articles') || '[]')
   if (likedArticles.includes(article.value.id)) {
     hasLiked.value = true
@@ -186,28 +199,19 @@ const handleLike = async () => {
   }
 
   if (hasLiked.value || !article.value) return
-  
+
   try {
     await likeArticle(article.value.id)
     article.value.likes += 1
     hasLiked.value = true
-    
-    // 将该文章 ID 记录到 localStorage，防止刷新后重复点赞
     likedArticles.push(article.value.id)
     localStorage.setItem('liked_articles', JSON.stringify(likedArticles))
-    
-    // 撒花特效
+
     const rect = document.getElementById('like-button')?.getBoundingClientRect()
     if (rect) {
       const x = (rect.left + rect.width / 2) / window.innerWidth
       const y = (rect.top + rect.height / 2) / window.innerHeight
-      
-      confetti({
-        particleCount: 100,
-        spread: 70,
-        origin: { x, y },
-        colors: ['#ec4899', '#8b5cf6', '#6366f1']
-      })
+      confetti({ particleCount: 100, spread: 70, origin: { x, y }, colors: ['#ec4899', '#8b5cf6', '#6366f1'] })
     }
   } catch (error) {
     console.error('点赞失败:', error)
@@ -216,39 +220,36 @@ const handleLike = async () => {
 
 const submitComment = async () => {
   if (!commentForm.nickname || !commentForm.email || !commentForm.content || !article.value) return
-  
-  // 简单的防抖与频率限制：检查最后一次评论时间
   const lastCommentTime = parseInt(localStorage.getItem('last_comment_time') || '0')
   const now = Date.now()
-  if (now - lastCommentTime < 60000) { // 限制 60 秒内只能评论一次
+  if (now - lastCommentTime < 60000) {
     alert(`评论太频繁啦！请等待 ${Math.ceil((60000 - (now - lastCommentTime)) / 1000)} 秒后再试。`)
     return
   }
 
   isSubmitting.value = true
-  
   try {
-    await createComment({
-      article_id: article.value.id,
-      nickname: commentForm.nickname,
-      email: commentForm.email,
-      content: commentForm.content
-    })
-    
-    // 记录评论时间
+    await createComment({ article_id: article.value.id, nickname: commentForm.nickname, email: commentForm.email, content: commentForm.content })
     localStorage.setItem('last_comment_time', now.toString())
-
-    // 重新获取评论列表
-    const newComments = await getComments(article.value.id)
-    comments.value = newComments
-    
     commentForm.content = ''
-    alert('评论发表成功！(如果设置了审核，请等待博主通过)')
+    alert('评论已提交，等待审核通过后展示。')
   } catch (error) {
     console.error('评论失败:', error)
     alert('评论发表失败，请稍后重试。')
   } finally {
     isSubmitting.value = false
+  }
+}
+
+const handleAsk = async () => {
+  if (!ragQuestion.value.trim()) return
+  ragLoading.value = true
+  try {
+    ragAnswer.value = await askRagQuestion({ question: ragQuestion.value })
+  } catch (error) {
+    console.error('RAG 问答失败:', error)
+  } finally {
+    ragLoading.value = false
   }
 }
 
@@ -261,21 +262,20 @@ const compiledMarkdown = computed(() => {
 onMounted(async () => {
   const id = Number(route.params.id)
   if (!id) return
-  
-  // 页面加载时，检查是否已经点赞过
+
   const likedArticles = JSON.parse(localStorage.getItem('liked_articles') || '[]')
-  if (likedArticles.includes(id)) {
-    hasLiked.value = true
-  }
+  if (likedArticles.includes(id)) hasLiked.value = true
 
   try {
-    const [articleData, commentsData] = await Promise.all([
+    const [articleData, commentsData, assistData] = await Promise.all([
       getArticleDetail(id),
-      getComments(id)
+      getComments(id),
+      getArticleAssist(id)
     ])
-    
+
     article.value = articleData
     comments.value = commentsData
+    articleAssist.value = assistData
   } catch (error) {
     console.error('获取文章详情失败:', error)
   } finally {

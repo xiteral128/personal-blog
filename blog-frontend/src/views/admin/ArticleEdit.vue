@@ -85,9 +85,7 @@ onMounted(async () => {
   // 加载分类数据
   try {
     const catRes = await getCategories()
-    // 注意：如果是通过 api 对象请求，拦截器可能返回了 { code, data, message } 或者直接返回 data
-    // 我们做一个兼容处理以防万一
-    categories.value = catRes.data ? catRes.data : catRes
+    categories.value = catRes
   } catch (error) {
     console.error('获取分类失败')
   }
@@ -115,9 +113,7 @@ const onUploadImg = async (files: Array<File>, callback: (urls: Array<string>) =
     files.map(async (file) => {
       try {
         const res = await uploadImage(file)
-        // 注意：拦截器剥离了 data，所以 res 直接包含了 url
-        // res = { url: '/api/v1/uploads/xxx.png', alt: 'xxx.png' }
-        return res.url ? res.url : (res.data ? res.data.url : '')
+        return res.url || ''
       } catch (error) {
         console.error('上传图片失败:', error)
         alert(`图片 ${file.name} 上传失败`)
@@ -127,7 +123,7 @@ const onUploadImg = async (files: Array<File>, callback: (urls: Array<string>) =
   )
   
   // 过滤掉上传失败的图片，将成功返回的 url 传给编辑器回调函数
-  callback(resUrls.filter(url => url !== ''))
+  callback(resUrls.filter((url): url is string => url !== ''))
 }
 
 const handleSave = async () => {

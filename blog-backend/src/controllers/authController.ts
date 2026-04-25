@@ -1,45 +1,68 @@
 import { Request, Response } from 'express';
-import bcrypt from 'bcryptjs';
-import jwt from 'jsonwebtoken';
-import db from '../db';
-import { RowDataPacket } from 'mysql2';
+import { loginAdmin, logoutAdminSession, refreshAdminSession, getCurrentSessionUser } from '../modules/auth/service';
+import { asyncHandler } from '../shared/utils/asyncHandler';
+import { sendNoContent, sendSuccess } from '../shared/utils/response';
+import { requireString } from '../shared/utils/validators';
+import { env } from '../config/env';
+import { getRequestAccessToken } from '../shared/middleware/auth';
 
-export const login = async (req: Request, res: Response) => {
-  const { username, password } = req.body;
-
-  try {
-    const [rows] = await db.query<RowDataPacket[]>(
-      'SELECT * FROM users WHERE username = ?',
-      [username]
-    );
-
-    if (rows.length === 0) {
-      return res.status(401).json({ code: 401, message: '用户名或密码错误', data: null });
-    }
-
-    const user = rows[0];
-    const isMatch = await bcrypt.compare(password, user.password_hash);
-
-    if (!isMatch) {
-      return res.status(401).json({ code: 401, message: '用户名或密码错误', data: null });
-    }
-
-    const token = jwt.sign(
-      { id: user.id, username: user.username },
-      process.env.JWT_SECRET || 'secret',
-      { expiresIn: '24h' }
-    );
-
-    res.json({
-      code: 200,
-      message: '登录成功',
-      data: {
-        token,
-        user: { id: user.id, username: user.username, avatar: user.avatar }
-      }
-    });
-  } catch (error) {
-    console.error(error);
-    res.status(500).json({ code: 500, message: '服务器错误', data: null });
-  }
+const applyRefreshCookie = (res: Response, refreshToken: string) => {
+  res.cookie(env.refreshCookieName, refreshToken, {
+    httpOnly: true,
+    sameSite: 'lax',
+    secure: env.nodeEnv === 'production',
+    path: '/api/v1/auth',
+    maxAge: 7 * 24 * 60 * 60 * 1000,
+  });
 };
+
+const clearRefreshCookie = (res: Response) => {
+  res.clearCookie(env.refreshCookieName, {
+    httpOnly: true,
+    sameSite: 'lax',
+    secure: env.nodeEnv === 'production',
+    path: '/api/v1/auth',
+  });
+};
+
+export const login = asyncHandler(async (req: Request, res: Response) => {
+  const username = requireString(req.body.username, '用户名');
+  const password = requireString(req.body.password, '密码');
+
+  const result = await loginAdmin(username, password);
+  applyRefreshCookie(res, result.refreshToken);
+
+  return sendSuccess(res, {
+    accessToken: result.accessToken,
+    sessionId: result.sessionId,
+    user: result.user,
+  }, '登录成功');
+});
+
+export const refreshSession = asyncHandler(async (req: Request, res: Response) => {
+  const sessionId = requireString(req.body.sessionId, 'sessionId');
+  const refreshToken = req.cookies?.[env.refreshCookieName];
+  const result = await refreshAdminSession(sessionId, refreshToken);
+  applyRefreshCookie(res, result.refreshToken);
+
+  return sendSuccess(res, {
+    accessToken: result.accessToken,
+    sessionId: result.sessionId,
+    user: result.user,
+  }, '刷新成功');
+});
+
+export const getProfile = asyncHandler(async (req: Request, res: Response) => {
+  const token = getRequestAccessToken(req);
+  const user = await getCurrentSessionUser(token);
+  return sendSuccess(res, user, '获取成功');
+});
+
+export const logout = asyncHandler(async (req: Request, res: Response) => {
+  const sessionId = req.body.sessionId as string | undefined;
+  if (sessionId) {
+    await logoutAdminSession(sessionId, req.user?.id);
+  }
+  clearRefreshCookie(res);
+  return sendNoContent(res, '退出成功');
+});

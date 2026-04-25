@@ -1,56 +1,42 @@
 import { Request, Response } from 'express';
-import db from '../db';
-import { RowDataPacket } from 'mysql2';
+import { deleteComment, getCommentStatusSummary, listAdminComments, reviewComment } from '../modules/comment/service';
+import { asyncHandler } from '../shared/utils/asyncHandler';
+import { sendNoContent, sendSuccess } from '../shared/utils/response';
+import { requireNumber } from '../shared/utils/validators';
+import { writeAuditLog } from '../shared/logger/audit';
 
-// 获取所有评论（后台管理用）
-export const getAllComments = async (req: Request, res: Response) => {
-  try {
-    const page = parseInt(req.query.page as string) || 1;
-    const limit = parseInt(req.query.limit as string) || 20;
-    const offset = (page - 1) * limit;
+export const getAllComments = asyncHandler(async (req: Request, res: Response) => {
+  const comments = await listAdminComments(req.query.page, req.query.limit, req.query.status);
+  const summary = await getCommentStatusSummary();
+  return sendSuccess(res, { list: comments, summary });
+});
 
-    const [rows] = await db.query<RowDataPacket[]>(
-      `SELECT c.id, c.nickname, c.email, c.content, c.status, c.created_at, a.title as article_title
-       FROM comments c
-       LEFT JOIN articles a ON c.article_id = a.id
-       ORDER BY c.created_at DESC
-       LIMIT ${limit} OFFSET ${offset}`
-    );
+export const updateCommentStatus = asyncHandler(async (req: Request, res: Response) => {
+  const id = requireNumber(req.params.id, '评论ID');
+  const status = requireNumber(req.body.status, '状态');
+  await reviewComment(id, status);
+  await writeAuditLog({
+    userId: req.user?.id,
+    action: status === 1 ? 'COMMENT_APPROVE' : 'COMMENT_REJECT',
+    resourceType: 'comment',
+    resourceId: id,
+    traceId: req.traceId,
+    ip: req.ip,
+    metadata: { status },
+  });
+  return sendNoContent(res, '更新成功');
+});
 
-    res.json({ code: 200, message: 'success', data: rows });
-  } catch (error) {
-    console.error(error);
-    res.status(500).json({ code: 500, message: 'Server Error' });
-  }
-};
-
-// 更改评论状态（审核通过/拒绝）
-export const updateCommentStatus = async (req: Request, res: Response) => {
-  const { id } = req.params;
-  const { status } = req.body;
-  
-  if (status === undefined) {
-    return res.status(400).json({ code: 400, message: 'Status is required' });
-  }
-
-  try {
-    await db.query('UPDATE comments SET status = ? WHERE id = ?', [status, id]);
-    res.json({ code: 200, message: '更新成功', data: null });
-  } catch (error) {
-    console.error(error);
-    res.status(500).json({ code: 500, message: 'Server Error' });
-  }
-};
-
-// 删除评论
-export const deleteComment = async (req: Request, res: Response) => {
-  const { id } = req.params;
-  
-  try {
-    await db.query('DELETE FROM comments WHERE id = ?', [id]);
-    res.json({ code: 200, message: '删除成功', data: null });
-  } catch (error) {
-    console.error(error);
-    res.status(500).json({ code: 500, message: 'Server Error' });
-  }
-};
+export const deleteCommentHandler = asyncHandler(async (req: Request, res: Response) => {
+  const id = requireNumber(req.params.id, '评论ID');
+  await deleteComment(id);
+  await writeAuditLog({
+    userId: req.user?.id,
+    action: 'COMMENT_DELETE',
+    resourceType: 'comment',
+    resourceId: id,
+    traceId: req.traceId,
+    ip: req.ip,
+  });
+  return sendNoContent(res, '删除成功');
+});

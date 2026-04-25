@@ -1,23 +1,14 @@
 import { Request, Response } from 'express';
-import db from '../db';
-import { RowDataPacket } from 'mysql2';
+import { listCategories, listTags } from '../modules/meta/service';
+import { asyncHandler } from '../shared/utils/asyncHandler';
+import { sendSuccess } from '../shared/utils/response';
 
-export const getCategories = async (req: Request, res: Response) => {
-  try {
-    const [rows] = await db.query<RowDataPacket[]>('SELECT id, name FROM categories');
-    res.json({ code: 200, message: 'success', data: rows });
-  } catch (error) {
-    console.error(error);
-    res.status(500).json({ code: 500, message: 'Server Error' });
-  }
-};
+export const getCategories = asyncHandler(async (_req: Request, res: Response) => {
+  const rows = await listCategories();
+  return sendSuccess(res, rows);
+});
 
-export const getTags = async (req: Request, res: Response) => {
-  try {
-    const [rows] = await db.query<RowDataPacket[]>('SELECT id, name FROM tags');
-    res.json({ code: 200, message: 'success', data: rows });
-  } catch (error) {
-    console.error(error);
-    res.status(500).json({ code: 500, message: 'Server Error' });
-  }
-};
+export const getTags = asyncHandler(async (_req: Request, res: Response) => {
+  const rows = await listTags();
+  return sendSuccess(res, rows);
+});

@@ -1,9 +1,8 @@
 <template>
   <div class="animate-fade-in-up">
     <h2 class="text-3xl font-extrabold text-gray-900 dark:text-white mb-8 border-b pb-4 dark:border-gray-700">控制台</h2>
-    
-    <!-- 数据统计卡片 -->
-    <div class="grid grid-cols-1 md:grid-cols-3 gap-6 mb-10">
+
+    <div class="grid grid-cols-1 md:grid-cols-4 gap-6 mb-10">
       <div @click="$router.push('/admin/articles')" class="cursor-pointer bg-gradient-to-br from-indigo-500 to-purple-600 rounded-2xl shadow-lg p-6 transform hover:scale-105 transition-transform duration-300">
         <div class="flex items-center justify-between">
           <h3 class="text-white/80 text-sm font-medium uppercase tracking-wider">总文章数</h3>
@@ -33,9 +32,18 @@
         </div>
         <p class="text-4xl font-bold text-white mt-4">{{ stats.totalInteractions }}</p>
       </div>
+
+      <div @click="$router.push('/admin/comments')" class="cursor-pointer bg-gradient-to-br from-amber-400 to-yellow-500 rounded-2xl shadow-lg p-6 transform hover:scale-105 transition-transform duration-300">
+        <div class="flex items-center justify-between">
+          <h3 class="text-white/80 text-sm font-medium uppercase tracking-wider">待审核评论</h3>
+          <span class="p-2 bg-white/20 rounded-lg">
+            <svg class="w-6 h-6 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z"></path></svg>
+          </span>
+        </div>
+        <p class="text-4xl font-bold text-white mt-4">{{ stats.pendingComments }}</p>
+      </div>
     </div>
 
-    <!-- ECharts 数据可视化区 -->
     <div class="grid grid-cols-1 lg:grid-cols-2 gap-6 mb-10">
       <div class="bg-white dark:bg-gray-800 rounded-2xl shadow-sm p-6 border border-gray-100 dark:border-gray-700 h-96 flex flex-col">
         <h3 class="text-lg font-bold text-gray-800 dark:text-gray-200 mb-4">近七天访问趋势</h3>
@@ -51,18 +59,41 @@
       </div>
     </div>
 
-    <!-- 快捷操作区 -->
-    <div class="bg-white dark:bg-gray-800 rounded-2xl shadow-sm p-8 border border-gray-100 dark:border-gray-700">
-      <h3 class="text-lg font-bold text-gray-800 dark:text-gray-200 mb-6">快捷操作</h3>
-      <div class="flex gap-4">
-        <button @click="$router.push('/admin/articles/edit')" class="flex flex-col items-center justify-center w-32 h-32 rounded-xl bg-gray-50 dark:bg-gray-700 hover:bg-indigo-50 dark:hover:bg-indigo-900/30 text-gray-600 dark:text-gray-300 hover:text-indigo-600 dark:hover:text-indigo-400 transition-colors border border-dashed border-gray-200 dark:border-gray-600 hover:border-indigo-300">
-          <svg class="w-8 h-8 mb-3" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z"></path></svg>
-          <span class="text-sm font-medium">写新文章</span>
-        </button>
-        <button @click="$router.push('/admin/articles')" class="flex flex-col items-center justify-center w-32 h-32 rounded-xl bg-gray-50 dark:bg-gray-700 hover:bg-emerald-50 dark:hover:bg-emerald-900/30 text-gray-600 dark:text-gray-300 hover:text-emerald-600 dark:hover:text-emerald-400 transition-colors border border-dashed border-gray-200 dark:border-gray-600 hover:border-emerald-300">
-          <svg class="w-8 h-8 mb-3" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 6h16M4 10h16M4 14h16M4 18h16"></path></svg>
-          <span class="text-sm font-medium">文章管理</span>
-        </button>
+    <div class="grid grid-cols-1 lg:grid-cols-2 gap-6">
+      <div class="bg-white dark:bg-gray-800 rounded-2xl shadow-sm p-8 border border-gray-100 dark:border-gray-700">
+        <h3 class="text-lg font-bold text-gray-800 dark:text-gray-200 mb-6">快捷操作</h3>
+        <div class="flex gap-4 flex-wrap">
+          <button @click="$router.push('/admin/articles/edit')" class="flex flex-col items-center justify-center w-32 h-32 rounded-xl bg-gray-50 dark:bg-gray-700 hover:bg-indigo-50 dark:hover:bg-indigo-900/30 text-gray-600 dark:text-gray-300 hover:text-indigo-600 dark:hover:text-indigo-400 transition-colors border border-dashed border-gray-200 dark:border-gray-600 hover:border-indigo-300">
+            <svg class="w-8 h-8 mb-3" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z"></path></svg>
+            <span class="text-sm font-medium">写新文章</span>
+          </button>
+          <button @click="$router.push('/admin/articles')" class="flex flex-col items-center justify-center w-32 h-32 rounded-xl bg-gray-50 dark:bg-gray-700 hover:bg-emerald-50 dark:hover:bg-emerald-900/30 text-gray-600 dark:text-gray-300 hover:text-emerald-600 dark:hover:text-emerald-400 transition-colors border border-dashed border-gray-200 dark:border-gray-600 hover:border-emerald-300">
+            <svg class="w-8 h-8 mb-3" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 6h16M4 10h16M4 14h16M4 18h16"></path></svg>
+            <span class="text-sm font-medium">文章管理</span>
+          </button>
+        </div>
+      </div>
+
+      <div class="bg-white dark:bg-gray-800 rounded-2xl shadow-sm p-8 border border-gray-100 dark:border-gray-700">
+        <div class="flex items-center justify-between mb-6">
+          <h3 class="text-lg font-bold text-gray-800 dark:text-gray-200">最近操作日志</h3>
+          <span class="text-xs font-mono text-gray-500">TRACE {{ stats.traceId || 'N/A' }}</span>
+        </div>
+        <div class="space-y-4 max-h-80 overflow-auto">
+          <div v-if="stats.recentOperations.length === 0" class="text-sm text-gray-500">暂无操作记录</div>
+          <div v-for="item in stats.recentOperations" :key="item.id" class="p-4 rounded-xl bg-gray-50 dark:bg-gray-700/50 border border-gray-100 dark:border-gray-700">
+            <div class="flex justify-between gap-4">
+              <div>
+                <div class="text-sm font-semibold text-gray-900 dark:text-white">{{ item.action }}</div>
+                <div class="text-xs text-gray-500 mt-1">{{ item.resource_type }} / {{ item.resource_id || '-' }}</div>
+              </div>
+              <div class="text-right text-xs text-gray-500">
+                <div>{{ formatDate(item.created_at) }}</div>
+                <div class="font-mono mt-1">{{ item.trace_id || 'no-trace' }}</div>
+              </div>
+            </div>
+          </div>
+        </div>
       </div>
     </div>
   </div>
@@ -70,71 +101,46 @@
 
 <script setup lang="ts">
 import { useAppStore } from '../../store'
-import { computed, ref, onMounted } from 'vue'
-import { getDashboardStats } from '../../api/admin'
-
-// 引入 ECharts 核心和组件
+import { computed, ref, onMounted, provide } from 'vue'
+import { getDashboardStats, type DashboardStats } from '../../api/admin'
 import { use } from 'echarts/core'
 import { CanvasRenderer } from 'echarts/renderers'
 import { LineChart, PieChart } from 'echarts/charts'
-import {
-  TitleComponent,
-  TooltipComponent,
-  LegendComponent,
-  GridComponent,
-} from 'echarts/components'
+import { TitleComponent, TooltipComponent, LegendComponent, GridComponent } from 'echarts/components'
 import VChart, { THEME_KEY } from 'vue-echarts'
-import { provide } from 'vue'
 
-// 注册 ECharts 组件
-use([
-  CanvasRenderer,
-  LineChart,
-  PieChart,
-  TitleComponent,
-  TooltipComponent,
-  LegendComponent,
-  GridComponent,
-])
+use([CanvasRenderer, LineChart, PieChart, TitleComponent, TooltipComponent, LegendComponent, GridComponent])
 
 const appStore = useAppStore()
-
-// 根据当前主题动态提供 ECharts 主题
 provide(THEME_KEY, computed(() => (appStore.theme === 'dark' ? 'dark' : 'light')))
 
-// 真实数据状态
-const stats = ref({
+const stats = ref<DashboardStats>({
   totalArticles: 0,
   totalViews: 0,
   totalInteractions: 0,
-  categoryData: [] as any[]
+  pendingComments: 0,
+  categoryData: [],
+  viewTrend: [],
+  recentOperations: [],
+  traceId: ''
 })
 
 onMounted(async () => {
   try {
-    const res = await getDashboardStats()
-    stats.value = res // 这里修复了：因为 api.get 已经解包了 res.data，所以直接赋值 res
+    stats.value = await getDashboardStats()
   } catch (error) {
     console.error('获取统计数据失败:', error)
   }
 })
 
-// 折线图配置 (近七天访问量 Mock 数据)
 const lineChartOption = computed(() => ({
   backgroundColor: 'transparent',
-  tooltip: {
-    trigger: 'axis'
-  },
-  grid: {
-    left: '3%',
-    right: '4%',
-    bottom: '3%',
-    containLabel: true
-  },
+  tooltip: { trigger: 'axis' },
+  grid: { left: '3%', right: '4%', bottom: '3%', containLabel: true },
   xAxis: {
     type: 'category',
     boundaryGap: false,
-    data: ['周一', '周二', '周三', '周四', '周五', '周六', '周日'],
+    data: stats.value.viewTrend.map((item) => item.day.slice(5)),
     axisLine: { lineStyle: { color: appStore.theme === 'dark' ? '#4b5563' : '#e5e7eb' } },
     axisLabel: { color: appStore.theme === 'dark' ? '#9ca3af' : '#6b7280' }
   },
@@ -159,17 +165,14 @@ const lineChartOption = computed(() => ({
           ]
         }
       },
-      data: [12, 5, 23, 14, 30, 45, 10] // TODO: 这里未来可以替换为真实的每天阅读量数据
+      data: stats.value.viewTrend.map((item) => item.views)
     }
   ]
 }))
 
-// 饼图配置 (使用真实的数据库分类占比数据)
 const pieChartOption = computed(() => ({
   backgroundColor: 'transparent',
-  tooltip: {
-    trigger: 'item'
-  },
+  tooltip: { trigger: 'item' },
   legend: {
     bottom: '5%',
     left: 'center',
@@ -186,10 +189,7 @@ const pieChartOption = computed(() => ({
         borderColor: appStore.theme === 'dark' ? '#1f2937' : '#fff',
         borderWidth: 2
       },
-      label: {
-        show: false,
-        position: 'center'
-      },
+      label: { show: false, position: 'center' },
       emphasis: {
         label: {
           show: true,
@@ -203,4 +203,6 @@ const pieChartOption = computed(() => ({
     }
   ]
 }))
+
+const formatDate = (value: string) => new Date(value).toLocaleString()
 </script>

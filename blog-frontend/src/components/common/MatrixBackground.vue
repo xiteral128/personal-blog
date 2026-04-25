@@ -80,9 +80,6 @@ onMounted(() => {
   // 5. 动画循环
   let mouseX = 0
   let mouseY = 0
-  let targetX = 0
-  let targetY = 0
-
   const windowHalfX = window.innerWidth / 2
   const windowHalfY = window.innerHeight / 2
 
@@ -95,9 +92,6 @@ onMounted(() => {
   document.addEventListener('mousemove', onDocumentMouseMove)
 
   const render = () => {
-    targetX = mouseX * 0.05
-    targetY = mouseY * 0.05
-
     // 减小相机的位移范围，制造一种被包裹在宇宙中“只能张望，无法逃离”的感觉
     camera.position.x += (mouseX * 0.2 - camera.position.x) * 0.05
     camera.position.y += (-mouseY * 0.2 - camera.position.y) * 0.05

@@ -1,5 +1,6 @@
 import { createRouter, createWebHistory } from 'vue-router'
 import type { RouteRecordRaw } from 'vue-router'
+import { useUserStore } from '../store'
 
 const routes: Array<RouteRecordRaw> = [
   {
@@ -75,22 +76,30 @@ const router = createRouter({
   routes
 })
 
-router.beforeEach((to, _from, next) => {
+router.beforeEach(async (to, _from, next) => {
   if (to.meta.title) {
     document.title = `${to.meta.title} - 个人博客`
   }
 
-  // 简单的路由守卫：检查是否需要登录
-  const token = localStorage.getItem('token')
+  const userStore = useUserStore()
   if (to.path.startsWith('/admin') && to.path !== '/admin/login') {
-    if (!token) {
+    if (!userStore.token) {
       next('/admin/login')
-    } else {
-      next()
+      return
     }
-  } else {
-    next()
+
+    try {
+      if (!userStore.userInfo) {
+        await userStore.hydrateProfile()
+      }
+      next()
+    } catch {
+      next('/admin/login')
+    }
+    return
   }
+
+  next()
 })
 
 export default router

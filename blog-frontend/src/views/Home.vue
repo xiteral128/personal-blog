@@ -1,12 +1,32 @@
 <template>
   <div class="grid grid-cols-1 lg:grid-cols-12 gap-8 animate-fade-in-up">
-    <!-- 左侧：文章列表 -->
     <div class="lg:col-span-8 space-y-8">
-      <div class="flex items-center justify-between mb-8">
+      <div class="flex items-center justify-between mb-8 gap-4 flex-wrap">
         <h2 class="text-3xl font-extrabold tracking-tight text-gray-900 dark:text-white flex items-center group font-mono uppercase">
           <span class="bg-gradient-to-b from-indigo-500 to-purple-600 w-2 h-8 mr-3 rounded-sm group-hover:h-10 transition-all duration-300 shadow-[0_0_10px_rgba(99,102,241,0.5)]"></span>
           Terminal<span class="cursor-blink text-indigo-500 ml-1">_</span>
         </h2>
+        <form class="w-full lg:w-96" @submit.prevent="handleSearch">
+          <div class="flex gap-2">
+            <input v-model="searchQuery" type="text" placeholder="语义搜索博客内容..." class="flex-1 px-4 py-3 rounded-xl bg-gray-900/80 border border-indigo-500/30 text-indigo-100 placeholder-indigo-300/40 focus:outline-none focus:ring-2 focus:ring-indigo-500" />
+            <button type="submit" class="px-4 py-3 rounded-xl bg-indigo-600 hover:bg-indigo-500 text-white font-mono">搜索</button>
+          </div>
+        </form>
+      </div>
+
+      <div v-if="searchResults.length > 0" class="cyber-card rounded-xl p-6 space-y-4">
+        <div class="flex items-center justify-between">
+          <h3 class="text-lg font-bold text-indigo-300 font-mono uppercase">Semantic Search Results</h3>
+          <button @click="clearSearch" class="text-xs text-indigo-400 hover:text-indigo-300 font-mono">CLEAR</button>
+        </div>
+        <div v-for="result in searchResults" :key="`${result.articleId}-${result.score}`" class="p-4 rounded-lg bg-gray-900/60 border border-indigo-500/20">
+          <router-link :to="`/article/${result.articleId}`" class="text-lg font-semibold text-white hover:text-indigo-300 transition-colors">
+            {{ result.title }}
+          </router-link>
+          <p class="text-sm text-gray-400 mt-2">{{ result.summary }}</p>
+          <p class="text-sm text-indigo-200/80 mt-3 line-clamp-3">{{ result.snippet }}</p>
+          <div class="text-xs font-mono text-indigo-400/70 mt-2">score: {{ result.score.toFixed(3) }}</div>
+        </div>
       </div>
 
       <div v-if="loading" class="animate-pulse space-y-6">
@@ -26,16 +46,13 @@
         </div>
       </template>
     </div>
-    
-    <!-- 右侧：侧边栏信息 -->
+
     <div class="lg:col-span-4 space-y-8">
-      <!-- 个人信息卡片 (极客风) -->
       <div class="cyber-card rounded-xl overflow-hidden animate-float hover-card">
         <div class="cyber-line-top"></div>
         <div class="cyber-line-bottom"></div>
         <div class="h-32 bg-[url('https://images.unsplash.com/photo-1550439062-609e1531270e?q=80&w=1000&auto=format&fit=crop')] bg-cover bg-center relative">
           <div class="absolute inset-0 bg-indigo-900/60 backdrop-blur-[2px]"></div>
-          <!-- 装饰性代码 -->
           <div class="absolute top-2 left-4 text-[10px] text-indigo-300/30 font-mono opacity-50 select-none">
             <p>import { Matrix } from 'reality'</p>
             <p>await Matrix.connect()</p>
@@ -45,7 +62,6 @@
           <div class="absolute -top-14 left-1/2 -translate-x-1/2 w-28 h-28 rounded-xl bg-gray-900 p-1 shadow-[0_0_20px_rgba(99,102,241,0.3)] border border-indigo-500/30 rotate-3 hover:rotate-0 transition-transform duration-300">
             <img class="w-full h-full rounded-lg object-cover" src="https://images.unsplash.com/photo-1535295972055-1c762f4483e5?q=80&w=256&auto=format&fit=crop" alt="Avatar">
           </div>
-          
           <div class="text-center mt-16">
             <h3 class="text-3xl font-black text-transparent bg-clip-text bg-gradient-to-r from-indigo-400 via-purple-400 to-pink-400 tracking-wider glitch-text uppercase">Hongyi</h3>
             <div class="mt-4 inline-flex items-center px-4 py-1.5 rounded bg-indigo-900/40 border border-indigo-500/30 text-xs font-mono text-indigo-300 shadow-[inset_0_0_10px_rgba(99,102,241,0.2)]">
@@ -53,7 +69,6 @@
               SYS.ADMIN_ONLINE
             </div>
           </div>
-          
           <div class="mt-8 flex justify-center gap-4">
             <a href="https://github.com/xiteral128" target="_blank" class="group relative w-12 h-12 rounded bg-gray-800 flex items-center justify-center text-gray-400 hover:text-white transition-all border border-gray-700 hover:border-indigo-500 shadow-sm hover:shadow-[0_0_15px_rgba(99,102,241,0.5)]">
               <div class="absolute inset-0 bg-indigo-500/20 scale-0 group-hover:scale-100 transition-transform duration-300"></div>
@@ -66,8 +81,7 @@
           </div>
         </div>
       </div>
-      
-      <!-- 极客风格标签云 -->
+
       <div class="cyber-card rounded-xl p-6 hover-card">
         <div class="cyber-line-top"></div>
         <h3 class="text-lg font-bold text-indigo-400 flex items-center mb-6 font-mono tracking-widest uppercase">
@@ -89,11 +103,14 @@
 import { ref, onMounted } from 'vue'
 import ArticleCard from '../components/common/ArticleCard.vue'
 import { getArticles } from '../api/article'
+import { semanticSearch, type SearchResultItem } from '../api/search'
 
 const articles = ref<any[]>([])
 const loading = ref(true)
+const searchQuery = ref('')
+const searchResults = ref<SearchResultItem[]>([])
 
-onMounted(async () => {
+const loadArticles = async () => {
   try {
     const res = await getArticles({ page: 1, limit: 10 })
     articles.value = res.list
@@ -102,5 +119,26 @@ onMounted(async () => {
   } finally {
     loading.value = false
   }
+}
+
+onMounted(async () => {
+  await loadArticles()
 })
+
+const handleSearch = async () => {
+  if (!searchQuery.value.trim()) {
+    searchResults.value = []
+    return
+  }
+  try {
+    searchResults.value = await semanticSearch({ q: searchQuery.value, limit: 6 })
+  } catch (error) {
+    console.error('语义搜索失败:', error)
+  }
+}
+
+const clearSearch = () => {
+  searchQuery.value = ''
+  searchResults.value = []
+}
 </script>

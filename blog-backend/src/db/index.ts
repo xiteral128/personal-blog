@@ -1,16 +1,19 @@
-import mysql from 'mysql2/promise';
-import dotenv from 'dotenv';
-
-dotenv.config();
+import mysql from 'mysql2';
+import { env } from '../config/env';
 
 const pool = mysql.createPool({
-  host: process.env.DB_HOST || 'localhost',
-  user: process.env.DB_USER || 'root',
-  password: process.env.DB_PASSWORD || '',
-  database: process.env.DB_NAME || 'my_blog',
+  host: env.dbHost,
+  user: env.dbUser,
+  password: env.dbPassword,
+  database: env.dbName,
+  charset: 'utf8mb4',
   waitForConnections: true,
   connectionLimit: 10,
-  queueLimit: 0
+  queueLimit: 0,
 });
 
-export default pool;
+pool.on('connection', (connection) => {
+  connection.query('SET NAMES utf8mb4 COLLATE utf8mb4_unicode_ci');
+});
+
+export default pool.promise();
