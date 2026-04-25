@@ -70,6 +70,24 @@ export const findAiApiKeyByHash = async (keyHash: string) => {
   return rows[0] || null;
 };
 
+export const findAiApiKeyById = async (id: number) => {
+  const [rows] = await db.query<AiApiKeyRow[]>(
+    'SELECT * FROM ai_api_keys WHERE id = ? LIMIT 1',
+    [id]
+  );
+  return rows[0] || null;
+};
+
+export const updateAiApiKeySecret = async (input: { id: number; keyPrefix: string; keyHash: string }) => {
+  const [result] = await db.query<ResultSetHeader>(
+    `UPDATE ai_api_keys
+     SET key_prefix = ?, key_hash = ?, enabled = 1, revoked_at = NULL
+     WHERE id = ?`,
+    [input.keyPrefix, input.keyHash, input.id]
+  );
+  return result.affectedRows > 0;
+};
+
 export const listAiApiKeys = async () => {
   const [rows] = await db.query<AiApiKeyRow[]>(
     `SELECT id, name, key_prefix, key_hash, mode, enabled, daily_limit, last_used_at, last_used_ip,

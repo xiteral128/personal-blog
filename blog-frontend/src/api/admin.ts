@@ -105,6 +105,10 @@ export function revokeAiKey(id: number) {
   return api.patch<unknown, unknown>(`/admin/ai/keys/${id}/revoke`)
 }
 
+export function rotateAiKey(id: number) {
+  return api.patch<CreatedAiKey, CreatedAiKey>(`/admin/ai/keys/${id}/rotate`)
+}
+
 export function getAiDrafts(params?: { status?: number | '' }) {
   return api.get<AiDraftRecord[], AiDraftRecord[]>('/admin/ai/drafts', { params })
 }

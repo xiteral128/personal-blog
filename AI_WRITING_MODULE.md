@@ -108,6 +108,7 @@ Authorization: Bearer blog_ai_xxx
 ```http
 GET   /api/v1/admin/ai/keys
 POST  /api/v1/admin/ai/keys
+PATCH /api/v1/admin/ai/keys/:id/rotate
 PATCH /api/v1/admin/ai/keys/:id/revoke
 GET   /api/v1/admin/ai/drafts
 POST  /api/v1/admin/ai/drafts/:id/approve
@@ -137,6 +138,7 @@ AI 写作
 - 选择模式：AI 全权负责 / 人类拍板。
 - 设置每日创建上限。
 - 查看 Key 前缀、模式、状态和最近使用时间。
+- 重置已有 Agent Key，并一次性显示新的完整 API Key。
 - 吊销 Key。
 - 查看 AI 草稿箱。
 - 编辑 AI 文章排版。

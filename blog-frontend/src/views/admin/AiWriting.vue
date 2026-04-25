@@ -56,6 +56,9 @@
         </form>
 
         <div class="rounded-xl border border-indigo-500/20 bg-gray-950/40 overflow-hidden">
+          <div class="border-b border-indigo-500/20 bg-indigo-950/30 px-5 py-3 text-xs text-indigo-200/70">
+            完整 API Key 只在创建或重置后显示一次。已有 Key 无法找回明文，需要点 RESET_KEY 生成新 Key。
+          </div>
           <table class="min-w-full divide-y divide-indigo-500/20">
             <thead class="bg-indigo-900/30">
               <tr>
@@ -81,9 +84,14 @@
                   </span>
                 </td>
                 <td class="px-5 py-4 text-sm">
-                  <button v-if="key.enabled" @click="revokeKey(key.id)" class="text-rose-300 hover:text-rose-200 font-mono">
-                    REVOKE
-                  </button>
+                  <div v-if="key.enabled" class="flex flex-wrap gap-3 font-mono">
+                    <button @click="rotateKey(key.id)" class="text-cyan-300 hover:text-cyan-200">
+                      RESET_KEY
+                    </button>
+                    <button @click="revokeKey(key.id)" class="text-rose-300 hover:text-rose-200">
+                      REVOKE
+                    </button>
+                  </div>
                 </td>
               </tr>
             </tbody>
@@ -159,6 +167,7 @@ import {
   getAiKeys,
   rejectAiDraft,
   revokeAiKey,
+  rotateAiKey,
   type AiDraftRecord,
   type AiKeyRecord
 } from '../../api/admin'
@@ -280,6 +289,21 @@ const copyCreatedKey = async () => {
 
   selectCreatedKey()
   showCopyFeedback('已选中，请手动复制')
+}
+
+const rotateKey = async (id: number) => {
+  if (!confirm('确定重置这个 Agent 的 API Key 吗？旧 Key 会立刻失效，新 Key 只显示这一次。')) return
+
+  try {
+    const result = await rotateAiKey(id)
+    createdKey.value = result.apiKey
+    copyFeedback.value = ''
+    await fetchKeys()
+    await nextTick()
+    selectCreatedKey()
+  } catch (error: any) {
+    alert(error.message || '重置失败')
+  }
 }
 
 const revokeKey = async (id: number) => {

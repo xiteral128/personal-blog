@@ -12,6 +12,7 @@ import {
   getAiDraftsForAdmin,
   getAiWritingMeta,
   rejectAiDraft,
+  rotateAiApiKey,
   updateArticleFromAi,
 } from '../modules/aiWriting/service';
 
@@ -37,6 +38,12 @@ export const revokeAiKey = asyncHandler(async (req: Request, res: Response) => {
   const id = requireNumber(req.params.id, 'AI Key ID');
   await disableAiApiKey(id, { userId: req.user?.id, traceId: req.traceId, ip: req.ip });
   return sendNoContent(res, 'AI API Key已吊销');
+});
+
+export const rotateAiKey = asyncHandler(async (req: Request, res: Response) => {
+  const id = requireNumber(req.params.id, 'AI Key ID');
+  const result = await rotateAiApiKey(id, { userId: req.user?.id, traceId: req.traceId, ip: req.ip });
+  return sendSuccess(res, result, 'AI API Key已重置');
 });
 
 export const listAdminAiDrafts = asyncHandler(async (req: Request, res: Response) => {

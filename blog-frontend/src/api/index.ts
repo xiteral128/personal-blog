@@ -32,7 +32,7 @@ api.interceptors.request.use(
 api.interceptors.response.use(
   <T>(response: AxiosResponse<ApiEnvelope<T>>) => {
     const res = response.data
-    if (res.code === 200) {
+    if (res.code >= 200 && res.code < 300) {
       return res.data
     }
     return Promise.reject(new Error(res.message || 'Error'))

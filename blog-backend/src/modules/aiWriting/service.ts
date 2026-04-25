@@ -9,6 +9,7 @@ import {
   AiKeyMode,
   countAiArticlesCreatedToday,
   createAiApiKey,
+  findAiApiKeyById,
   findAiApiKeyByHash,
   findAiArticleById,
   insertAiArticle,
@@ -17,6 +18,7 @@ import {
   reviewAiDraft,
   revokeAiApiKey,
   touchAiApiKey,
+  updateAiApiKeySecret,
   updateAiArticle,
 } from './repository';
 
@@ -26,6 +28,8 @@ const MAX_SUMMARY_LENGTH = 300;
 const MAX_CONTENT_LENGTH = 100 * 1024;
 
 const hashToken = (token: string) => crypto.createHash('sha256').update(token).digest('hex');
+
+const createToken = () => `${TOKEN_PREFIX}${crypto.randomBytes(32).toString('base64url')}`;
 
 const normalizeMode = (mode: unknown): AiKeyMode => {
   return mode === 'autonomous' ? 'autonomous' : 'review';
@@ -89,7 +93,7 @@ export const generateAiApiKey = async (input: {
   ip?: string;
 }) => {
   const name = cleanText(input.name, 'Agent名称', 100);
-  const token = `${TOKEN_PREFIX}${crypto.randomBytes(32).toString('base64url')}`;
+  const token = createToken();
   const keyPrefix = token.slice(0, 18);
   const mode = normalizeMode(input.mode);
   const dailyLimit = normalizeDailyLimit(input.dailyLimit);
@@ -123,6 +127,44 @@ export const generateAiApiKey = async (input: {
     mode,
     dailyLimit,
     expiresAt,
+  };
+};
+
+export const rotateAiApiKey = async (id: number, context?: { userId?: number; traceId?: string; ip?: string }) => {
+  const key = await findAiApiKeyById(id);
+  if (!key) throw new AppError(404, 'AI Key not found');
+
+  const token = createToken();
+  const keyPrefix = token.slice(0, 18);
+  await updateAiApiKeySecret({
+    id,
+    keyPrefix,
+    keyHash: hashToken(token),
+  });
+
+  await writeAuditLog({
+    userId: context?.userId,
+    action: 'AI_KEY_ROTATE',
+    resourceType: 'ai_api_key',
+    resourceId: id,
+    traceId: context?.traceId,
+    ip: context?.ip,
+    metadata: { name: key.name, mode: key.mode, keyPrefix },
+  });
+
+  return {
+    id,
+    apiKey: token,
+    keyPrefix,
+    name: key.name,
+    mode: key.mode,
+    enabled: true,
+    dailyLimit: key.daily_limit,
+    lastUsedAt: key.last_used_at,
+    lastUsedIp: key.last_used_ip,
+    expiresAt: key.expires_at,
+    createdAt: key.created_at,
+    revokedAt: null,
   };
 };
 
