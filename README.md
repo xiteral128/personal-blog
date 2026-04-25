@@ -2,6 +2,10 @@
 
 一个面向个人写作与知识沉淀的全栈博客系统。项目采用 Vue 3 + Express + MySQL 的前后端分离架构，并在传统博客能力之外加入 Redis 缓存、Qdrant 语义检索、RAG 问答雏形、后台统计与 Docker Compose 部署。
 
+## 在线访问
+
+博客地址：[https://blog.cnmnimasile.asia](https://blog.cnmnimasile.asia)
+
 ## 功能特性
 
 - 博客首页、文章详情、归档页、关于页
