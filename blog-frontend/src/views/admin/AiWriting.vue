@@ -154,6 +154,55 @@
       </div>
       <div v-if="drafts.length === 0" class="py-16 text-center text-indigo-200/50 font-mono">NO_AI_ARTICLES</div>
     </section>
+
+    <section class="cyber-card rounded-2xl shadow-lg p-8">
+      <div class="flex flex-col gap-3 md:flex-row md:items-center md:justify-between border-b border-indigo-500/20 pb-5 mb-6">
+        <div>
+          <h3 class="text-xl font-black text-indigo-100 tracking-widest uppercase">AI 调用日志</h3>
+          <p class="mt-2 text-sm text-indigo-200/60 font-mono">记录 Agent 调用 AI 写作 API 的状态、耗时、请求体大小和 TraceId。</p>
+        </div>
+        <button @click="fetchCallLogs" class="px-4 py-2 rounded-lg border border-cyan-400/40 text-cyan-200 font-mono hover:bg-cyan-400/10 transition-colors">
+          REFRESH_LOGS
+        </button>
+      </div>
+
+      <div class="overflow-x-auto rounded-xl border border-indigo-500/20 bg-gray-950/40">
+        <table class="min-w-full divide-y divide-indigo-500/20">
+          <thead class="bg-indigo-900/30">
+            <tr>
+              <th class="px-5 py-3 text-left text-xs font-mono text-indigo-200">Agent</th>
+              <th class="px-5 py-3 text-left text-xs font-mono text-indigo-200">接口</th>
+              <th class="px-5 py-3 text-left text-xs font-mono text-indigo-200">状态</th>
+              <th class="px-5 py-3 text-left text-xs font-mono text-indigo-200">耗时</th>
+              <th class="px-5 py-3 text-left text-xs font-mono text-indigo-200">请求体</th>
+              <th class="px-5 py-3 text-left text-xs font-mono text-indigo-200">IP</th>
+              <th class="px-5 py-3 text-left text-xs font-mono text-indigo-200">TraceId</th>
+              <th class="px-5 py-3 text-left text-xs font-mono text-indigo-200">时间</th>
+            </tr>
+          </thead>
+          <tbody class="divide-y divide-indigo-500/10">
+            <tr v-for="log in callLogs" :key="log.id" class="hover:bg-indigo-500/10">
+              <td class="px-5 py-4 text-sm text-gray-100 whitespace-nowrap">{{ log.agent_name || 'UNKNOWN' }}</td>
+              <td class="px-5 py-4 text-xs font-mono text-cyan-100 min-w-72">
+                <span class="text-cyan-300">{{ log.method }}</span>
+                <span class="ml-2 text-gray-300">{{ log.path }}</span>
+              </td>
+              <td class="px-5 py-4 text-sm whitespace-nowrap">
+                <span class="px-2 py-1 rounded border text-xs font-mono" :class="callStatusClass(log)">
+                  {{ log.status_code }}
+                </span>
+              </td>
+              <td class="px-5 py-4 text-sm font-mono text-indigo-100 whitespace-nowrap">{{ log.latency_ms }} ms</td>
+              <td class="px-5 py-4 text-sm font-mono text-indigo-100 whitespace-nowrap">{{ formatBytes(log.request_bytes) }}</td>
+              <td class="px-5 py-4 text-sm font-mono text-gray-400 whitespace-nowrap">{{ log.ip_address || '-' }}</td>
+              <td class="px-5 py-4 text-sm font-mono text-gray-400 whitespace-nowrap">{{ shortTraceId(log.trace_id) }}</td>
+              <td class="px-5 py-4 text-sm text-gray-400 whitespace-nowrap">{{ formatTime(log.created_at) }}</td>
+            </tr>
+          </tbody>
+        </table>
+        <div v-if="callLogs.length === 0" class="py-12 text-center text-indigo-200/50 font-mono">NO_AI_CALL_LOGS</div>
+      </div>
+    </section>
   </div>
 </template>
 
@@ -163,11 +212,13 @@ import { useRouter } from 'vue-router'
 import {
   approveAiDraft,
   createAiKey,
+  getAiCallLogs,
   getAiDrafts,
   getAiKeys,
   rejectAiDraft,
   revokeAiKey,
   rotateAiKey,
+  type AiCallLogRecord,
   type AiDraftRecord,
   type AiKeyRecord
 } from '../../api/admin'
@@ -175,6 +226,7 @@ import {
 const router = useRouter()
 const keys = ref<AiKeyRecord[]>([])
 const drafts = ref<AiDraftRecord[]>([])
+const callLogs = ref<AiCallLogRecord[]>([])
 const createdKey = ref('')
 const copyFeedback = ref('')
 const isCreatingKey = ref(false)
@@ -214,6 +266,20 @@ const formatTime = (value?: string | null) => {
   return new Date(value).toLocaleString()
 }
 
+const callStatusClass = (log: AiCallLogRecord) => {
+  const success = log.success === true || log.success === 1
+  if (success) return 'border-emerald-400/40 text-emerald-300 bg-emerald-500/10'
+  if (log.status_code === 401 || log.status_code === 403) return 'border-amber-400/40 text-amber-300 bg-amber-500/10'
+  return 'border-rose-400/40 text-rose-300 bg-rose-500/10'
+}
+
+const formatBytes = (value: number) => {
+  if (value < 1024) return `${value} B`
+  return `${(value / 1024).toFixed(1)} KB`
+}
+
+const shortTraceId = (value?: string | null) => value ? value.slice(0, 12) : '-'
+
 const fetchKeys = async () => {
   keys.value = await getAiKeys()
 }
@@ -222,8 +288,12 @@ const fetchDrafts = async () => {
   drafts.value = await getAiDrafts({ status: draftStatus.value })
 }
 
+const fetchCallLogs = async () => {
+  callLogs.value = await getAiCallLogs({ limit: 100 })
+}
+
 const refreshAll = async () => {
-  await Promise.all([fetchKeys(), fetchDrafts()])
+  await Promise.all([fetchKeys(), fetchDrafts(), fetchCallLogs()])
 }
 
 const showCopyFeedback = (message: string) => {

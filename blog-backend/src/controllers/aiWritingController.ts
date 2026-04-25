@@ -9,6 +9,7 @@ import {
   generateAiApiKey,
   getAiApiKeys,
   getAiArticle,
+  getAiCallLogsForAdmin,
   getAiDraftsForAdmin,
   getAiWritingMeta,
   rejectAiDraft,
@@ -31,6 +32,11 @@ export const createAiKey = asyncHandler(async (req: Request, res: Response) => {
 
 export const listAiKeys = asyncHandler(async (_req: Request, res: Response) => {
   const result = await getAiApiKeys();
+  return sendSuccess(res, result);
+});
+
+export const listAiCallLogs = asyncHandler(async (req: Request, res: Response) => {
+  const result = await getAiCallLogsForAdmin(req.query.limit);
   return sendSuccess(res, result);
 });
 

@@ -37,6 +37,22 @@ export interface AiDraftRow extends RowDataPacket {
   updated_at: string;
 }
 
+export interface AiCallLogRow extends RowDataPacket {
+  id: number;
+  ai_key_id: number | null;
+  agent_name: string | null;
+  method: string;
+  path: string;
+  status_code: number;
+  success: number;
+  latency_ms: number;
+  request_bytes: number;
+  ip_address: string | null;
+  user_agent: string | null;
+  trace_id: string | null;
+  created_at: string;
+}
+
 export const createAiApiKey = async (input: {
   name: string;
   keyPrefix: string;
@@ -227,4 +243,49 @@ export const reviewAiDraft = async (input: {
     ]
   );
   return result.affectedRows > 0;
+};
+
+export const insertAiCallLog = async (input: {
+  aiKeyId?: number | null;
+  agentName?: string | null;
+  method: string;
+  path: string;
+  statusCode: number;
+  success: boolean;
+  latencyMs: number;
+  requestBytes: number;
+  ip?: string | null;
+  userAgent?: string | null;
+  traceId?: string | null;
+}) => {
+  await db.query(
+    `INSERT INTO ai_call_logs
+       (ai_key_id, agent_name, method, path, status_code, success, latency_ms, request_bytes, ip_address, user_agent, trace_id)
+     VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+    [
+      input.aiKeyId || null,
+      input.agentName || null,
+      input.method,
+      input.path.slice(0, 255),
+      input.statusCode,
+      input.success ? 1 : 0,
+      input.latencyMs,
+      input.requestBytes,
+      input.ip || null,
+      input.userAgent?.slice(0, 255) || null,
+      input.traceId || null,
+    ]
+  );
+};
+
+export const listAiCallLogs = async (limit = 100) => {
+  const [rows] = await db.query<AiCallLogRow[]>(
+    `SELECT id, ai_key_id, agent_name, method, path, status_code, success, latency_ms,
+            request_bytes, ip_address, user_agent, trace_id, created_at
+     FROM ai_call_logs
+     ORDER BY created_at DESC
+     LIMIT ?`,
+    [Math.max(1, Math.min(200, limit))]
+  );
+  return rows;
 };

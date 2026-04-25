@@ -27,6 +27,32 @@ export function getAdminArticleDetail(id: number) {
   return api.get<Article, Article>(`/admin/articles/${id}`)
 }
 
+export interface ArticleVersionRecord {
+  id: number
+  article_id: number
+  title: string
+  summary?: string | null
+  content: string
+  category_id?: number | null
+  status: number
+  source: string
+  ai_key_id?: number | null
+  review_status?: string | null
+  snapshot_type: string
+  created_by?: number | null
+  created_at: string
+  contentPreview: string
+  contentLength: number
+}
+
+export function getArticleVersions(id: number) {
+  return api.get<ArticleVersionRecord[], ArticleVersionRecord[]>(`/admin/articles/${id}/versions`)
+}
+
+export function restoreArticleVersion(articleId: number, versionId: number) {
+  return api.post<{ id: number }, { id: number }>(`/admin/articles/${articleId}/versions/${versionId}/restore`)
+}
+
 export function deleteArticle(id: number) {
   return api.delete<unknown, unknown>(`/admin/articles/${id}`)
 }
@@ -93,6 +119,22 @@ export interface AiDraftRecord {
   updated_at: string
 }
 
+export interface AiCallLogRecord {
+  id: number
+  ai_key_id?: number | null
+  agent_name?: string | null
+  method: string
+  path: string
+  status_code: number
+  success: number | boolean
+  latency_ms: number
+  request_bytes: number
+  ip_address?: string | null
+  user_agent?: string | null
+  trace_id?: string | null
+  created_at: string
+}
+
 export function getAiKeys() {
   return api.get<AiKeyRecord[], AiKeyRecord[]>('/admin/ai/keys')
 }
@@ -111,6 +153,10 @@ export function rotateAiKey(id: number) {
 
 export function getAiDrafts(params?: { status?: number | '' }) {
   return api.get<AiDraftRecord[], AiDraftRecord[]>('/admin/ai/drafts', { params })
+}
+
+export function getAiCallLogs(params?: { limit?: number }) {
+  return api.get<AiCallLogRecord[], AiCallLogRecord[]>('/admin/ai/calls', { params })
 }
 
 export function approveAiDraft(id: number, publish: boolean) {

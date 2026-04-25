@@ -10,13 +10,15 @@
 
 - 博客首页、文章详情、归档页、关于页
 - 管理后台登录、文章管理、评论审核、图片上传
-- Markdown 编辑与渲染
+- Markdown 编辑与渲染，文章页支持代码块语法高亮
 - 文章点赞、阅读统计、评论状态管理
+- 文章版本历史与后台一键恢复
 - Redis 缓存文章、元数据与统计接口
 - Qdrant 语义搜索与文章切片索引
 - 文章 AI 摘要、标签建议、相似文章推荐
 - RAG 问答接口雏形
-- AI 写作中心：支持多个 Agent 使用独立 API Key 创建 Markdown 草稿或自动发布
+- AI 写作中心：支持多个 Agent 使用独立 API Key 创建 Markdown 草稿或自动发布，并记录 AI 调用日志
+- 文章详情 SEO：动态标题、描述、Canonical、Open Graph 与 BlogPosting JSON-LD
 - TraceId 链路追踪与统一响应结构
 - Docker Compose 一键部署，支持数据库迁移服务
 
@@ -33,6 +35,7 @@
 - Tailwind CSS
 - md-editor-v3
 - marked + DOMPurify
+- highlight.js
 - ECharts / vue-echarts
 
 ### 后端
@@ -240,3 +243,7 @@ docker compose --env-file .env.production down -v
 AI 写作中心的权限模型、接口设计和开发记录见：
 
 [AI_WRITING_MODULE.md](./AI_WRITING_MODULE.md)
+
+## 最新迭代记录
+
+2026-04-25 已完成 AI 写作中心 V2：AI 调用日志、文章版本历史、代码高亮和文章页 SEO。后续部署时会随 Docker Compose 迁移服务执行 `database/migrations/005_ai_writing_v2_logs_versions.sql`。

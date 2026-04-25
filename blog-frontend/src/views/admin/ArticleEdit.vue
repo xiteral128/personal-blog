@@ -41,6 +41,37 @@
         <textarea v-model="form.summary" rows="2" class="w-full rounded-md border-gray-300 shadow-sm focus:border-indigo-500 focus:ring-indigo-500 dark:bg-gray-700 dark:border-gray-600 dark:text-white p-3 border text-sm" placeholder="如果不填将自动截取正文前50个字符..."></textarea>
       </div>
 
+      <div v-if="isEdit" class="rounded-xl border border-indigo-500/20 bg-gray-900/40 p-5">
+        <div class="flex items-center justify-between gap-4 mb-4">
+          <div>
+            <h3 class="text-base font-bold text-indigo-100">版本历史</h3>
+            <p class="mt-1 text-xs text-indigo-200/60">每次保存前都会自动记录上一版，可用于回滚误改。</p>
+          </div>
+          <button @click="fetchVersions" type="button" class="px-3 py-2 rounded-lg border border-indigo-400/40 text-indigo-200 text-xs font-mono hover:bg-indigo-400/10">
+            REFRESH
+          </button>
+        </div>
+        <div v-if="versions.length === 0" class="text-sm text-indigo-200/50 font-mono">NO_VERSIONS</div>
+        <div v-else class="space-y-3 max-h-72 overflow-y-auto pr-1">
+          <article v-for="version in versions" :key="version.id" class="rounded-lg border border-indigo-500/15 bg-gray-950/50 p-4">
+            <div class="flex flex-col gap-3 md:flex-row md:items-start md:justify-between">
+              <div class="min-w-0">
+                <div class="flex flex-wrap items-center gap-2">
+                  <span class="text-sm font-semibold text-gray-100 truncate">{{ version.title }}</span>
+                  <span class="rounded border border-cyan-400/30 bg-cyan-500/10 px-2 py-0.5 text-[11px] text-cyan-200 font-mono">{{ version.snapshot_type }}</span>
+                  <span class="rounded border border-indigo-400/30 bg-indigo-500/10 px-2 py-0.5 text-[11px] text-indigo-200 font-mono">{{ statusLabel(version.status) }}</span>
+                </div>
+                <p class="mt-2 text-xs text-gray-400 line-clamp-2">{{ version.contentPreview }}</p>
+                <p class="mt-2 text-[11px] text-gray-500 font-mono">{{ formatTime(version.created_at) }} / {{ version.contentLength }} chars</p>
+              </div>
+              <button @click="restoreVersion(version.id)" type="button" class="shrink-0 px-3 py-2 rounded-lg border border-amber-400/40 text-amber-200 text-xs font-mono hover:bg-amber-400/10">
+                RESTORE
+              </button>
+            </div>
+          </article>
+        </div>
+      </div>
+
       <!-- 专业 Markdown 编辑器 -->
       <div>
         <div class="flex justify-between items-center mb-2">
@@ -69,7 +100,7 @@
 <script setup lang="ts">
 import { ref, reactive, onMounted } from 'vue'
 import { useRouter, useRoute } from 'vue-router'
-import { getAdminArticleDetail, saveArticle, uploadImage } from '../../api/admin'
+import { getAdminArticleDetail, getArticleVersions, restoreArticleVersion, saveArticle, uploadImage, type ArticleVersionRecord } from '../../api/admin'
 import { getCategories } from '../../api/article'
 import { useAppStore } from '../../store'
 
@@ -84,6 +115,7 @@ const appStore = useAppStore()
 const isEdit = ref(false)
 const isSaving = ref(false)
 const categories = ref<any[]>([])
+const versions = ref<ArticleVersionRecord[]>([])
 
 const form = reactive({
   id: undefined as number | undefined,
@@ -93,6 +125,27 @@ const form = reactive({
   category_id: 1,
   status: 1
 })
+
+const statusLabel = (status: number) => {
+  const map: Record<number, string> = {
+    0: 'DRAFT',
+    1: 'ONLINE',
+    2: 'AI_REVIEW',
+    3: 'REJECTED'
+  }
+  return map[status] || 'UNKNOWN'
+}
+
+const formatTime = (value: string) => new Date(value).toLocaleString()
+
+const fetchVersions = async () => {
+  if (!form.id) return
+  try {
+    versions.value = await getArticleVersions(form.id)
+  } catch (error) {
+    console.error('获取版本历史失败:', error)
+  }
+}
 
 onMounted(async () => {
   // 加载分类数据
@@ -114,6 +167,7 @@ onMounted(async () => {
       form.content = article.content
       form.category_id = article.category_id || 1
       form.status = article.status ?? 1
+      await fetchVersions()
     } catch (error) {
       alert('获取文章详情失败，无法编辑')
       router.back()
@@ -138,6 +192,25 @@ const onUploadImg = async (files: Array<File>, callback: (urls: Array<string>) =
   
   // 过滤掉上传失败的图片，将成功返回的 url 传给编辑器回调函数
   callback(resUrls.filter((url): url is string => url !== ''))
+}
+
+const restoreVersion = async (versionId: number) => {
+  if (!form.id) return
+  if (!confirm('确定恢复到这个版本吗？当前内容会先自动保存为一个可回滚版本。')) return
+
+  try {
+    await restoreArticleVersion(form.id, versionId)
+    const article = await getAdminArticleDetail(form.id)
+    form.title = article.title
+    form.summary = article.summary
+    form.content = article.content
+    form.category_id = article.category_id || 1
+    form.status = article.status ?? 1
+    await fetchVersions()
+    alert('版本已恢复')
+  } catch (error: any) {
+    alert(error.message || '恢复失败')
+  }
 }
 
 const handleSave = async () => {

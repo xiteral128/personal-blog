@@ -32,6 +32,22 @@ export interface ArticleDetailRow extends RowDataPacket {
   updated_at: string;
 }
 
+export interface ArticleVersionRow extends RowDataPacket {
+  id: number;
+  article_id: number;
+  title: string;
+  summary: string | null;
+  content: string;
+  category_id: number | null;
+  status: number;
+  source: string;
+  ai_key_id: number | null;
+  review_status: string | null;
+  snapshot_type: string;
+  created_by: number | null;
+  created_at: string;
+}
+
 export const findPublishedArticles = async (limit: number, offset: number) => {
   const [rows] = await db.query<ArticleListRow[]>(
     `SELECT a.id, a.title, a.summary, a.cover_image, a.views, a.likes, a.created_at, c.name as category_name,
@@ -157,4 +173,54 @@ export const saveArticleRecord = async (input: {
 
 export const removeArticleById = async (id: number) => {
   await db.query('DELETE FROM articles WHERE id = ?', [id]);
+};
+
+export const createArticleVersion = async (input: {
+  article: Pick<ArticleDetailRow, 'id' | 'title' | 'summary' | 'content' | 'category_id' | 'status' | 'source' | 'ai_key_id' | 'review_status'>;
+  snapshotType: string;
+  createdBy?: number | null;
+}) => {
+  await db.query(
+    `INSERT INTO article_versions
+       (article_id, title, summary, content, category_id, status, source, ai_key_id, review_status, snapshot_type, created_by)
+     VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+    [
+      input.article.id,
+      input.article.title,
+      input.article.summary || null,
+      input.article.content,
+      input.article.category_id || null,
+      input.article.status,
+      input.article.source || 'manual',
+      input.article.ai_key_id || null,
+      input.article.review_status || null,
+      input.snapshotType,
+      input.createdBy || null,
+    ]
+  );
+};
+
+export const listArticleVersions = async (articleId: number) => {
+  const [rows] = await db.query<ArticleVersionRow[]>(
+    `SELECT id, article_id, title, summary, content, category_id, status, source, ai_key_id,
+            review_status, snapshot_type, created_by, created_at
+     FROM article_versions
+     WHERE article_id = ?
+     ORDER BY created_at DESC, id DESC
+     LIMIT 50`,
+    [articleId]
+  );
+  return rows;
+};
+
+export const findArticleVersionById = async (articleId: number, versionId: number) => {
+  const [rows] = await db.query<ArticleVersionRow[]>(
+    `SELECT id, article_id, title, summary, content, category_id, status, source, ai_key_id,
+            review_status, snapshot_type, created_by, created_at
+     FROM article_versions
+     WHERE article_id = ? AND id = ?
+     LIMIT 1`,
+    [articleId, versionId]
+  );
+  return rows[0] || null;
 };

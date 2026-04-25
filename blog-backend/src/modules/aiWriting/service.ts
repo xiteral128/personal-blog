@@ -3,6 +3,7 @@ import { AppError } from '../../shared/errors/appError';
 import { delCache } from '../../shared/cache/cache';
 import { buildCacheKey } from '../../shared/cache/redis';
 import { writeAuditLog } from '../../shared/logger/audit';
+import { createArticleVersion } from '../article/repository';
 import { listCategories, listTags } from '../meta/service';
 import {
   AiApiKeyRow,
@@ -13,7 +14,9 @@ import {
   findAiApiKeyByHash,
   findAiArticleById,
   insertAiArticle,
+  insertAiCallLog,
   listAiApiKeys,
+  listAiCallLogs,
   listAiDrafts,
   reviewAiDraft,
   revokeAiApiKey,
@@ -185,6 +188,29 @@ export const getAiApiKeys = async () => {
   }));
 };
 
+export const recordAiCall = async (input: {
+  aiKeyId?: number | null;
+  agentName?: string | null;
+  method: string;
+  path: string;
+  statusCode: number;
+  latencyMs: number;
+  requestBytes: number;
+  ip?: string | null;
+  userAgent?: string | null;
+  traceId?: string | null;
+}) => {
+  await insertAiCallLog({
+    ...input,
+    success: input.statusCode < 400,
+  });
+};
+
+export const getAiCallLogsForAdmin = async (limit?: unknown) => {
+  const parsedLimit = limit === undefined || limit === '' ? 100 : Number(limit);
+  return listAiCallLogs(Number.isFinite(parsedLimit) ? parsedLimit : 100);
+};
+
 export const disableAiApiKey = async (id: number, context?: { userId?: number; traceId?: string; ip?: string }) => {
   const ok = await revokeAiApiKey(id);
   if (!ok) throw new AppError(404, 'AI Key不存在');
@@ -282,11 +308,19 @@ export const updateArticleFromAi = async (input: {
   traceId?: string;
   ip?: string;
 }) => {
+  const existing = await findAiArticleById(input.id, input.key.id);
+  if (!existing) throw new AppError(404, 'AI文章不存在或无权修改');
+
   const title = cleanText(input.title, '标题', MAX_TITLE_LENGTH);
   const content = cleanText(input.content, '内容', MAX_CONTENT_LENGTH);
   const summary = cleanOptionalText(input.summary, title, MAX_SUMMARY_LENGTH);
   const categoryId = normalizeCategoryId(input.categoryId);
   const resolved = resolveAiStatus(input.key.mode, input.status);
+
+  await createArticleVersion({
+    article: existing,
+    snapshotType: 'ai_update',
+  });
 
   const ok = await updateAiArticle({
     id: input.id,

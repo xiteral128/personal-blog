@@ -234,19 +234,83 @@ npm run build
 - 后台 AI 写作页面访问验证通过：`https://blog.cnmnimasile.asia/admin/ai-writing` 返回 200。
 - AI API 未携带 Key 访问验证通过：`/api/v1/ai/meta` 返回 401，说明 AI API 已上线且默认受鉴权保护。
 
+## V2 迭代记录
+
+执行日期：2026-04-25
+
+本次围绕“AI 写作中心 V2”完成以下能力：
+
+| 能力 | 说明 |
+| --- | --- |
+| AI 调用日志 | 记录 Agent 调用 AI 写作 API 的接口、状态码、耗时、请求体大小、IP、User-Agent 和 TraceId |
+| 文章版本历史 | 后台保存文章更新前快照，AI 更新和人工保存都会形成可回滚版本 |
+| 版本恢复 | 管理员可在文章编辑页查看历史版本，并一键恢复；恢复前也会保存当前版本 |
+| 代码高亮 | 文章详情页使用 `highlight.js` 渲染 Markdown fenced code block，支持 Rust、TS、JS、Shell、SQL 等常用语言 |
+| SEO | 文章详情页动态写入 title、description、Canonical、Open Graph、Twitter Card 和 BlogPosting JSON-LD |
+
+新增迁移：
+
+```text
+database/migrations/005_ai_writing_v2_logs_versions.sql
+```
+
+新增表：
+
+```text
+ai_call_logs
+article_versions
+```
+
+新增/扩展后台接口：
+
+```http
+GET  /api/v1/admin/ai/calls
+GET  /api/v1/admin/articles/:id/versions
+POST /api/v1/admin/articles/:id/versions/:versionId/restore
+```
+
+本次后端变化：
+
+- 新增 `aiCallLogMiddleware`，记录 AI API 调用日志；中间件位于 AI Key 鉴权前，可记录 401 调用。
+- AI 写作仓库和服务层新增调用日志写入与后台查询。
+- 文章仓库和服务层新增版本快照、版本列表和版本恢复。
+- 管理员路由新增 AI 调用日志接口和文章版本接口。
+
+本次前端变化：
+
+- `AI 写作中心` 页面新增 AI 调用日志表格。
+- `文章编辑页` 新增版本历史面板和恢复按钮。
+- `文章详情页` 新增 `highlight.js` 代码块高亮。
+- `文章详情页` 新增动态 SEO 元信息和结构化数据。
+- `index.html` 默认语言改为 `zh-CN`，并设置站点级 description 和 title。
+
+本次不会提交以下内容：
+
+- `.env.production`
+- 后台管理员密码
+- Cloudflare API Token
+- 服务器 SSH 私钥或登录密码
+- 任何完整 AI API Key 明文
+
+V2 本地验证：
+
+```bash
+cd blog-backend
+npm run build
+
+cd ../blog-frontend
+npm run build
+```
+
+结果：
+
+- 后端 TypeScript 构建通过。
+- 前端类型检查和 Vite 构建通过。
+- 前端仍有大 chunk 警告，这是现有编辑器、图表和管理后台依赖导致的构建提示，不影响发布。
+
 ## 后续版本建议
 
-V2 可以继续增强：
-
-- Agent 调用记录列表
-- 按 Agent 筛选文章
-- Key 过期时间后台编辑
-- AI 修改历史对比
-- 一键重新排版
-- 一键生成摘要和标签
-- 上传配图接口
-
-V3 再考虑：
+V3 可以继续增强：
 
 - 写作任务队列
 - 多 Agent 协作
@@ -254,3 +318,9 @@ V3 再考虑：
 - Webhook 回调
 - 自动 SEO 建议
 - 自动重建搜索索引
+- 按 Agent 筛选文章和调用日志
+- Key 过期时间后台编辑
+- AI 修改历史对比
+- 一键重新排版
+- 一键生成摘要和标签
+- 上传配图接口

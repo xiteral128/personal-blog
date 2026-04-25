@@ -151,13 +151,79 @@
 </template>
 
 <script setup lang="ts">
-import { ref, onMounted, onUnmounted, computed, reactive } from 'vue'
+import { ref, onMounted, onUnmounted, computed, reactive, watch } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 import { marked } from 'marked'
+import type { Tokens } from 'marked'
+import hljs from 'highlight.js/lib/core'
+import bash from 'highlight.js/lib/languages/bash'
+import css from 'highlight.js/lib/languages/css'
+import dockerfile from 'highlight.js/lib/languages/dockerfile'
+import go from 'highlight.js/lib/languages/go'
+import java from 'highlight.js/lib/languages/java'
+import javascript from 'highlight.js/lib/languages/javascript'
+import json from 'highlight.js/lib/languages/json'
+import markdown from 'highlight.js/lib/languages/markdown'
+import python from 'highlight.js/lib/languages/python'
+import rust from 'highlight.js/lib/languages/rust'
+import sql from 'highlight.js/lib/languages/sql'
+import typescript from 'highlight.js/lib/languages/typescript'
+import xml from 'highlight.js/lib/languages/xml'
+import yaml from 'highlight.js/lib/languages/yaml'
+import 'highlight.js/styles/github-dark.css'
 import DOMPurify from 'dompurify'
 import { getArticleDetail, likeArticle, getComments, createComment } from '../api/article'
 import { askRagQuestion, getArticleAssist, type ArticleAssistResult, type RagAnswerResult } from '../api/search'
 import confetti from 'canvas-confetti'
+
+const registerLanguage = (names: string[], language: any) => {
+  names.forEach((name) => hljs.registerLanguage(name, language))
+}
+
+registerLanguage(['bash', 'sh', 'shell', 'powershell', 'ps1'], bash)
+registerLanguage(['css'], css)
+registerLanguage(['dockerfile', 'docker'], dockerfile)
+registerLanguage(['go', 'golang'], go)
+registerLanguage(['java'], java)
+registerLanguage(['javascript', 'js'], javascript)
+registerLanguage(['json'], json)
+registerLanguage(['markdown', 'md'], markdown)
+registerLanguage(['python', 'py'], python)
+registerLanguage(['rust', 'rs'], rust)
+registerLanguage(['sql'], sql)
+registerLanguage(['typescript', 'ts'], typescript)
+registerLanguage(['html', 'xml', 'vue'], xml)
+registerLanguage(['yaml', 'yml'], yaml)
+
+const escapeHtml = (value: string) => value
+  .replace(/&/g, '&amp;')
+  .replace(/</g, '&lt;')
+  .replace(/>/g, '&gt;')
+  .replace(/"/g, '&quot;')
+  .replace(/'/g, '&#39;')
+
+const normalizeLanguage = (lang?: string) => {
+  return lang?.match(/^[\w-]+/)?.[0]?.toLowerCase() || ''
+}
+
+marked.use({
+  renderer: {
+    code({ text, lang }: Tokens.Code) {
+      const language = normalizeLanguage(lang)
+      const registeredLanguage = language && hljs.getLanguage(language) ? language : ''
+      const highlighted = registeredLanguage
+        ? hljs.highlight(text, { language: registeredLanguage }).value
+        : escapeHtml(text)
+      const languageClass = registeredLanguage ? ` language-${registeredLanguage}` : ''
+      const label = registeredLanguage ? `<span class="code-block-language">${registeredLanguage}</span>` : ''
+
+      return `<pre class="code-block">${label}<code class="hljs${languageClass}">${highlighted}</code></pre>`
+    }
+  }
+})
+
+const SITE_NAME = 'Hongyi 的个人博客'
+const SITE_ORIGIN = 'https://blog.cnmnimasile.asia'
 
 const route = useRoute()
 const router = useRouter()
@@ -174,6 +240,87 @@ const articleAssist = ref<ArticleAssistResult>({ summary: '', suggestedTags: [],
 const comments = ref<any[]>([])
 const commentForm = reactive({ nickname: '', email: '', content: '' })
 
+const stripMarkdown = (value: string) => value
+  .replace(/```[\s\S]*?```/g, ' ')
+  .replace(/`([^`]+)`/g, '$1')
+  .replace(/!\[[^\]]*]\([^)]*\)/g, ' ')
+  .replace(/\[([^\]]+)]\([^)]*\)/g, '$1')
+  .replace(/[#>*_~\-]+/g, ' ')
+  .replace(/\s+/g, ' ')
+  .trim()
+
+const buildDescription = (value: any) => {
+  const raw = value.summary || stripMarkdown(value.content || '')
+  return String(raw).replace(/\s+/g, ' ').trim().slice(0, 150)
+}
+
+const setMetaContent = (selector: string, attrs: Record<string, string>, content: string) => {
+  let element = document.head.querySelector<HTMLMetaElement>(selector)
+  if (!element) {
+    element = document.createElement('meta')
+    Object.entries(attrs).forEach(([key, value]) => element?.setAttribute(key, value))
+    document.head.appendChild(element)
+  }
+  element.setAttribute('content', content)
+}
+
+const setCanonicalUrl = (url: string) => {
+  let element = document.head.querySelector<HTMLLinkElement>('link[rel="canonical"]')
+  if (!element) {
+    element = document.createElement('link')
+    element.setAttribute('rel', 'canonical')
+    document.head.appendChild(element)
+  }
+  element.setAttribute('href', url)
+}
+
+const setArticleJsonLd = (value: any, url: string, description: string) => {
+  let element = document.getElementById('article-json-ld') as HTMLScriptElement | null
+  if (!element) {
+    element = document.createElement('script')
+    element.id = 'article-json-ld'
+    element.type = 'application/ld+json'
+    document.head.appendChild(element)
+  }
+
+  element.text = JSON.stringify({
+    '@context': 'https://schema.org',
+    '@type': 'BlogPosting',
+    headline: value.title,
+    description,
+    datePublished: value.created_at,
+    dateModified: value.updated_at || value.created_at,
+    author: { '@type': 'Person', name: 'Hongyi' },
+    publisher: { '@type': 'Organization', name: SITE_NAME },
+    mainEntityOfPage: { '@type': 'WebPage', '@id': url },
+    url
+  })
+}
+
+const applyArticleSeo = (value: any) => {
+  const description = buildDescription(value)
+  const url = `${SITE_ORIGIN}/article/${value.id}`
+  const title = `${value.title} - ${SITE_NAME}`
+
+  document.title = title
+  setMetaContent('meta[name="description"]', { name: 'description' }, description)
+  setMetaContent('meta[property="og:title"]', { property: 'og:title' }, title)
+  setMetaContent('meta[property="og:description"]', { property: 'og:description' }, description)
+  setMetaContent('meta[property="og:type"]', { property: 'og:type' }, 'article')
+  setMetaContent('meta[property="og:url"]', { property: 'og:url' }, url)
+  setMetaContent('meta[property="og:site_name"]', { property: 'og:site_name' }, SITE_NAME)
+  setMetaContent('meta[name="twitter:card"]', { name: 'twitter:card' }, 'summary')
+  setMetaContent('meta[name="twitter:title"]', { name: 'twitter:title' }, title)
+  setMetaContent('meta[name="twitter:description"]', { name: 'twitter:description' }, description)
+  setCanonicalUrl(url)
+  setArticleJsonLd(value, url, description)
+}
+
+const removeArticleSeo = () => {
+  document.getElementById('article-json-ld')?.remove()
+  document.head.querySelector<HTMLLinkElement>('link[rel="canonical"]')?.remove()
+}
+
 const wordCount = computed(() => {
   if (!article.value || !article.value.content) return 0
   return article.value.content.replace(/[\s\n]/g, '').length
@@ -188,7 +335,14 @@ const handleScroll = () => {
 }
 
 onMounted(() => window.addEventListener('scroll', handleScroll))
-onUnmounted(() => window.removeEventListener('scroll', handleScroll))
+onUnmounted(() => {
+  window.removeEventListener('scroll', handleScroll)
+  removeArticleSeo()
+})
+
+watch(article, (value) => {
+  if (value) applyArticleSeo(value)
+})
 
 const handleLike = async () => {
   const likedArticles = JSON.parse(localStorage.getItem('liked_articles') || '[]')

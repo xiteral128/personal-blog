@@ -1,5 +1,5 @@
 import { Request, Response } from 'express';
-import { deleteArticle, getArticleForAdmin, getPublishedArticleDetail, likePublishedArticle, listPublishedArticles, saveArticle } from '../modules/article/service';
+import { deleteArticle, getArticleForAdmin, getArticleVersionsForAdmin, getPublishedArticleDetail, likePublishedArticle, listPublishedArticles, restoreArticleVersion, saveArticle } from '../modules/article/service';
 import { createArticleComment, listArticleComments } from '../modules/comment/service';
 import { asyncHandler } from '../shared/utils/asyncHandler';
 import { sendNoContent, sendSuccess } from '../shared/utils/response';
@@ -58,6 +58,7 @@ export const saveArticleHandler = asyncHandler(async (req: Request, res: Respons
     content,
     categoryId,
     status,
+    userId: req.user?.id,
   });
 
   await writeAuditLog({
@@ -77,6 +78,30 @@ export const getAdminArticleDetail = asyncHandler(async (req: Request, res: Resp
   const id = requireNumber(req.params.id, '文章ID');
   const article = await getArticleForAdmin(id);
   return sendSuccess(res, article);
+});
+
+export const getAdminArticleVersions = asyncHandler(async (req: Request, res: Response) => {
+  const id = requireNumber(req.params.id, '文章ID');
+  const versions = await getArticleVersionsForAdmin(id);
+  return sendSuccess(res, versions);
+});
+
+export const restoreAdminArticleVersion = asyncHandler(async (req: Request, res: Response) => {
+  const articleId = requireNumber(req.params.id, '文章ID');
+  const versionId = requireNumber(req.params.versionId, '版本ID');
+  const result = await restoreArticleVersion({ articleId, versionId, userId: req.user?.id });
+
+  await writeAuditLog({
+    userId: req.user?.id,
+    action: 'ARTICLE_VERSION_RESTORE',
+    resourceType: 'article',
+    resourceId: articleId,
+    traceId: req.traceId,
+    ip: req.ip,
+    metadata: { versionId },
+  });
+
+  return sendSuccess(res, { id: result.id }, '文章版本已恢复');
 });
 
 export const deleteArticleHandler = asyncHandler(async (req: Request, res: Response) => {

@@ -213,13 +213,25 @@ body {
 }
 
 .article-markdown pre {
+  position: relative;
   margin: 1.25rem 0;
   overflow-x: auto;
   border: 1px solid rgba(34, 211, 238, 0.24);
   border-radius: 0.75rem;
   background: linear-gradient(180deg, rgba(2, 6, 23, 0.96), rgba(15, 23, 42, 0.96));
-  padding: 1rem;
+  padding: 2.4rem 1rem 1rem;
   box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.04), 0 0 24px rgba(34, 211, 238, 0.08);
+}
+
+.article-markdown .code-block-language {
+  position: absolute;
+  top: 0.7rem;
+  right: 0.9rem;
+  color: rgb(125 211 252);
+  font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, "Liberation Mono", "Courier New", monospace;
+  font-size: 0.72rem;
+  letter-spacing: 0;
+  text-transform: uppercase;
 }
 
 .article-markdown pre code {
@@ -233,6 +245,10 @@ body {
   font-size: 0.92rem;
   line-height: 1.75;
   white-space: pre;
+}
+
+.article-markdown pre code.hljs {
+  background: transparent;
 }
 
 .article-markdown blockquote {
