@@ -23,10 +23,13 @@
           </div>
           <button @click="createdKey = ''" class="text-amber-100/60 hover:text-amber-100">关闭</button>
         </div>
-        <textarea :value="createdKey" readonly class="mt-4 w-full h-24 resize-none rounded-lg bg-gray-950/70 border border-amber-400/30 p-3 font-mono text-sm text-amber-100"></textarea>
-        <button @click="copyCreatedKey" class="mt-3 px-4 py-2 rounded-lg bg-amber-500/20 border border-amber-400/40 text-amber-100 font-mono hover:bg-amber-500/30">
-          COPY_KEY
-        </button>
+        <textarea ref="keyTextarea" :value="createdKey" readonly class="mt-4 w-full h-24 resize-none rounded-lg bg-gray-950/70 border border-amber-400/30 p-3 font-mono text-sm text-amber-100"></textarea>
+        <div class="mt-3 flex flex-wrap items-center gap-3">
+          <button @click="copyCreatedKey" class="px-4 py-2 rounded-lg bg-amber-500/20 border border-amber-400/40 text-amber-100 font-mono hover:bg-amber-500/30">
+            COPY_KEY
+          </button>
+          <span v-if="copyFeedback" class="text-sm text-amber-100/80 font-mono">{{ copyFeedback }}</span>
+        </div>
       </div>
 
       <div class="grid grid-cols-1 xl:grid-cols-[22rem_1fr] gap-6">
@@ -147,7 +150,7 @@
 </template>
 
 <script setup lang="ts">
-import { onMounted, reactive, ref } from 'vue'
+import { nextTick, onMounted, reactive, ref } from 'vue'
 import { useRouter } from 'vue-router'
 import {
   approveAiDraft,
@@ -164,8 +167,11 @@ const router = useRouter()
 const keys = ref<AiKeyRecord[]>([])
 const drafts = ref<AiDraftRecord[]>([])
 const createdKey = ref('')
+const copyFeedback = ref('')
 const isCreatingKey = ref(false)
 const draftStatus = ref<number | ''>(2)
+const keyTextarea = ref<HTMLTextAreaElement | null>(null)
+let copyFeedbackTimer: ReturnType<typeof window.setTimeout> | undefined
 
 const keyForm = reactive({
   name: '',
@@ -211,6 +217,24 @@ const refreshAll = async () => {
   await Promise.all([fetchKeys(), fetchDrafts()])
 }
 
+const showCopyFeedback = (message: string) => {
+  if (copyFeedbackTimer) window.clearTimeout(copyFeedbackTimer)
+  copyFeedback.value = message
+  copyFeedbackTimer = window.setTimeout(() => {
+    copyFeedback.value = ''
+  }, 2500)
+}
+
+const selectCreatedKey = () => {
+  const textarea = keyTextarea.value
+  if (!textarea) return false
+
+  textarea.focus()
+  textarea.select()
+  textarea.setSelectionRange(0, textarea.value.length)
+  return true
+}
+
 const createKey = async () => {
   if (!keyForm.name.trim()) {
     alert('请填写 Agent 名称')
@@ -220,8 +244,11 @@ const createKey = async () => {
   try {
     const result = await createAiKey({ ...keyForm })
     createdKey.value = result.apiKey
+    copyFeedback.value = ''
     keyForm.name = ''
     await fetchKeys()
+    await nextTick()
+    selectCreatedKey()
   } catch (error: any) {
     alert(error.message || '创建失败')
   } finally {
@@ -230,8 +257,29 @@ const createKey = async () => {
 }
 
 const copyCreatedKey = async () => {
-  await navigator.clipboard.writeText(createdKey.value)
-  alert('已复制')
+  if (!createdKey.value) return
+
+  try {
+    if (navigator.clipboard?.writeText && window.isSecureContext) {
+      await navigator.clipboard.writeText(createdKey.value)
+      showCopyFeedback('已复制')
+      return
+    }
+  } catch {
+    // Fall back to selecting the textarea below.
+  }
+
+  try {
+    if (selectCreatedKey() && document.execCommand('copy')) {
+      showCopyFeedback('已复制')
+      return
+    }
+  } catch {
+    // Some browsers block execCommand; leave the key selected for manual copy.
+  }
+
+  selectCreatedKey()
+  showCopyFeedback('已选中，请手动复制')
 }
 
 const revokeKey = async (id: number) => {
