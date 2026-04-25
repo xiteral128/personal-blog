@@ -308,6 +308,23 @@ npm run build
 - 前端类型检查和 Vite 构建通过。
 - 前端仍有大 chunk 警告，这是现有编辑器、图表和管理后台依赖导致的构建提示，不影响发布。
 
+## V2 公网部署记录
+
+部署日期：2026-04-25
+
+已执行：
+
+- 将 V2 代码提交并推送到 GitHub `main` 分支，提交号：`e91c04e`。
+- 在服务器 `/opt/blog` 执行 `git pull --ff-only origin main`。
+- 按顺序执行 `docker compose --env-file .env.production build backend` 和 `docker compose --env-file .env.production build nginx`。
+- 执行 `docker compose --env-file .env.production up -d` 重启服务。
+- 迁移服务已执行 `005_ai_writing_v2_logs_versions.sql`。
+- 服务状态检查通过：backend、nginx、mysql、redis、qdrant 均处于运行状态。
+- 公网首页访问验证通过：`https://blog.cnmnimasile.asia/` 返回 200。
+- AI API 未携带 Key 访问验证通过：`/api/v1/ai/meta` 返回 401，并已写入 `ai_call_logs`。
+- 数据库表验证通过：`ai_call_logs` 和 `article_versions` 已存在。
+- 浏览器验证通过：文章页已写入动态 title、description、canonical、BlogPosting JSON-LD，代码块已出现语法高亮节点。
+
 ## 后续版本建议
 
 V3 可以继续增强：

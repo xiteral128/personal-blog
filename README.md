@@ -246,4 +246,4 @@ AI 写作中心的权限模型、接口设计和开发记录见：
 
 ## 最新迭代记录
 
-2026-04-25 已完成 AI 写作中心 V2：AI 调用日志、文章版本历史、代码高亮和文章页 SEO。后续部署时会随 Docker Compose 迁移服务执行 `database/migrations/005_ai_writing_v2_logs_versions.sql`。
+2026-04-25 已完成并部署 AI 写作中心 V2：AI 调用日志、文章版本历史、代码高亮和文章页 SEO。公网环境已随 Docker Compose 迁移服务执行 `database/migrations/005_ai_writing_v2_logs_versions.sql`。
